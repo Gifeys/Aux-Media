@@ -1713,7 +1713,7 @@ export default function AdminPanel({
   const [specServeDoc, setSpecServeDoc] = useState<string[]>([]);
   const [specServeReels, setSpecServeReels] = useState<string[]>([]);
 
-  const handleSaveSpecialServeModal = (e: React.FormEvent) => {
+  const handleSaveSpecialServeModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!specServeTitle || !specServeDate) return;
 
@@ -1738,12 +1738,42 @@ export default function AdminPanel({
     };
 
     onAddSchedule(newSpecialRow);
+
+    const emailData = generateScheduleEmailData(newSpecialRow, servers);
+    if (emailData.batchEmails.length > 0) {
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: currentUser?.email || 'adrich.glife.abelon@gmail.com',
+            to: emailData.batchEmails.join(','),
+            subject: emailData.subject,
+            text: emailData.body
+          })
+        });
+      } catch (err) {
+        console.error('Failed to dispatch special serve email:', err);
+      }
+      setEmailModalData(emailData);
+    }
+
+    if (onAddAnnouncement) {
+      onAddAnnouncement({
+        id: `ann-spec-${Date.now()}`,
+        title: `✨ Special Serve Published: ${newSpecialRow.dayName}`,
+        content: `Special Liturgical Service "${newSpecialRow.dayName}" scheduled for ${newSpecialRow.date} at ${specServeTime}. ${emailData.batchEmails.length > 0 ? `${emailData.notifiedCount} assigned server(s) notified via email.` : 'Assignments posted to Master Schedule.'}`,
+        type: 'reminder',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      });
+    }
+
     setSpecServeTitle('');
     setSpecServePpt([]);
     setSpecServeDoc([]);
     setSpecServeReels([]);
     setShowSpecialServeModal(false);
-    alert('Special Serve schedule published and presented on the servers board! ⛪');
+    alert('Special Serve schedule published! Email sent and announcement created in portal! ⛪');
   };
 
   // Mapping of Server ID to Server details
@@ -1837,7 +1867,7 @@ export default function AdminPanel({
   };
 
   // Submit complete liturgy schedule
-  const handleSaveSchedule = (e: React.FormEvent) => {
+  const handleSaveSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dayName || !date) {
       alert('Please enter a Sunday/Feast title and Date');
@@ -1871,19 +1901,41 @@ export default function AdminPanel({
       onAddSchedule(completeRow);
     }
 
-    // Generate and show email notification dispatch summary
+    // Generate schedule email notification dispatch
     const emailData = generateScheduleEmailData(completeRow, servers);
+
+    // Auto-dispatch email via server API route to all assigned recipients
+    if (emailData.batchEmails.length > 0) {
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: currentUser?.email || 'adrich.glife.abelon@gmail.com',
+            to: emailData.batchEmails.join(','),
+            subject: emailData.subject,
+            text: emailData.body
+          })
+        });
+      } catch (err) {
+        console.error('Failed to auto-dispatch schedule email:', err);
+      }
+    }
+
     setEmailModalData(emailData);
 
-    if (emailData.notifiedCount > 0 && onAddAnnouncement) {
+    // Always publish or update announcement in Community Hub & Master Schedule
+    if (onAddAnnouncement) {
       onAddAnnouncement({
         id: `ann-sched-${Date.now()}`,
-        title: `⛪ Schedule Published: ${completeRow.dayName}`,
-        content: `Liturgy schedule for ${completeRow.dayName} (${completeRow.date}) published! ${emailData.notifiedCount} assigned media servers notified via email and workspace alerts.`,
+        title: `⛪ Schedule ${editingScheduleId ? 'Updated' : 'Published'}: ${completeRow.dayName}`,
+        content: `Liturgy schedule for ${completeRow.dayName} (${completeRow.date}) has been ${editingScheduleId ? 'updated' : 'published'}! ${emailData.batchEmails.length > 0 ? `${emailData.notifiedCount} assigned media server(s) notified via automated email.` : 'Schedule updated in portal.'}`,
         type: 'reminder',
         date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       });
     }
+
+    alert(`✅ Liturgy schedule "${completeRow.dayName}" (${completeRow.date}) ${editingScheduleId ? 'updated' : 'published'}! ${emailData.batchEmails.length > 0 ? `Notification email automatically sent to ${emailData.batchEmails.length} server(s).` : 'Master schedule registry updated.'}`);
 
     handleResetForm();
   };

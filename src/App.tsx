@@ -911,6 +911,7 @@ export default function App() {
               onUpdateSchedule={handleUpdateSchedule}
               onAddSchedule={handleAddSchedule}
               onDeleteSchedule={handleDeleteSchedule}
+              onAddAnnouncement={handleAddAnnouncement}
               onOpenReflectionModal={() => setShowReflectionModal(true)}
               onOpenSwapModal={() => setShowSwapModal(true)}
               auditRecords={auditRecords}

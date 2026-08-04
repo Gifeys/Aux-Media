@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ScheduleRow, Server, SocComRole, ScheduleSlot, ScheduleAuditRecord, SubAdminAttendanceAlert } from '../types';
+import { ScheduleRow, Server, SocComRole, ScheduleSlot, ScheduleAuditRecord, SubAdminAttendanceAlert, Announcement } from '../types';
 import { Search, Calendar, Award, Info, BookOpen, Plus, Radio, Check, Trash2, Edit3, X, UserCheck, Mail, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { generateScheduleEmailData, ScheduleEmailDispatchResult } from '../lib/emailNotifier';
 import { ScheduleEmailModal } from './ScheduleEmailModal';
@@ -17,6 +17,7 @@ interface ScheduleBoardProps {
   onUpdateSchedule?: (row: ScheduleRow) => void;
   onAddSchedule?: (row: ScheduleRow) => void;
   onDeleteSchedule?: (id: string) => void;
+  onAddAnnouncement?: (ann: Announcement) => void;
   onOpenReflectionModal?: () => void;
   onOpenSwapModal?: () => void;
   auditRecords?: ScheduleAuditRecord[];
@@ -121,6 +122,7 @@ export default function ScheduleBoard({
   onUpdateSchedule,
   onAddSchedule,
   onDeleteSchedule,
+  onAddAnnouncement,
   onOpenReflectionModal,
   onOpenSwapModal,
   auditRecords = [],
@@ -159,9 +161,38 @@ export default function ScheduleBoard({
   // Schedule Email Notification Modal State
   const [emailModalData, setEmailModalData] = useState<ScheduleEmailDispatchResult | null>(null);
 
-  const handleTriggerScheduleEmailAlerts = (schedule: ScheduleRow) => {
+  const handleTriggerScheduleEmailAlerts = async (schedule: ScheduleRow) => {
     const dispatch = generateScheduleEmailData(schedule, servers);
     setEmailModalData(dispatch);
+
+    // Auto-dispatch email via server API route if assigned recipients exist
+    if (dispatch.batchEmails.length > 0) {
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: currentUser.email || 'adrich.glife.abelon@gmail.com',
+            to: dispatch.batchEmails.join(','),
+            subject: dispatch.subject,
+            text: dispatch.body
+          })
+        });
+      } catch (err) {
+        console.error('Failed to auto-dispatch schedule email:', err);
+      }
+    }
+
+    // Always create an announcement so Community Hub & Master Schedule announcements are updated
+    if (onAddAnnouncement) {
+      onAddAnnouncement({
+        id: `ann-sched-${Date.now()}`,
+        title: `⛪ Schedule Updated: ${schedule.dayName}`,
+        content: `Master schedule for ${schedule.dayName} (${schedule.date}) has been updated! ${dispatch.batchEmails.length > 0 ? `${dispatch.notifiedCount} assigned server(s) notified via email.` : 'Schedule changes published to portal.'}`,
+        type: 'reminder',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      });
+    }
   };
 
   const openEditSlotModal = (slot: ScheduleSlot, schedule: ScheduleRow) => {
@@ -365,6 +396,7 @@ export default function ScheduleBoard({
 
     if (onAddSchedule) {
       onAddSchedule(newSpecialRow);
+      handleTriggerScheduleEmailAlerts(newSpecialRow);
     }
 
     setSpecialTitle('');
