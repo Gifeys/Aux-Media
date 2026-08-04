@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 222 55% 10%; /* #0b1326 Deep Space Navy */
+    --foreground: 228 92% 93%; /* #dae2fd Light Blue Silver */
+    --card: 222 40% 15%; /* #122131 Surface Container */
+    --card-foreground: 228 92% 93%;
+    --primary: 217 90% 45%; /* Electric Royal Blue #0b57d0 */
+    --primary-container: #0b57d0;
+    --border: 222 28% 24%;
+    --input: 222 28% 24%;
+  }
+
+  .dark {
+    --background: 222 55% 10%; /* #0b1326 */
+    --foreground: 228 92% 93%; /* #dae2fd */
+    --card: 222 40% 15%;
+    --card-foreground: 228 92% 93%;
+    --primary: 225 100% 85%; /* #b2c5ff */
+    --border: 222 28% 24%;
+  }
+
+  body {
+    background-color: #0b1326;
+    color: #d4e4fa;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-serif, .font-headline-lg, .font-headline-md {
+    font-family: "Playfair Display", Georgia, serif;
+  }
+}
+
+.glass-surface {
+  background: rgba(13, 28, 45, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-panel {
+  background: rgba(18, 33, 49, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.live-glow {
+  box-shadow: 0 0 15px 2px rgba(16, 185, 129, 0.3);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #273647;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Watermark background */
+.bg-watermark {
+  background-image: linear-gradient(rgba(5, 20, 36, 0.75), rgba(5, 20, 36, 0.85)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuCHLOE2aDLQvg6AYbISL8KQrUD_53HX9Le_fj7LhvoL7EGF5H-Sb-N2ZQQT_J2oH-fT4NJN9pfgHsUMs4nKE2FxW0ltfQN_x_3ONew63MVKX30oCOOtFBVUjmwXQnAIIQWummut6jIkB93Rwb7F5CT6xRM8dETfGiRcUtVcuI5jrLD9Y_ZsmRWVkz8mW8NH0WDtI1nOeCg02n4BeCndEjyFN8bqZY_nrhtWaLdOYWAjMwqjg_yZBW1H2vbh1Pp0aiovOw');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+

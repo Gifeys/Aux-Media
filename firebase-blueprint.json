@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "ServerUser": {
+      "title": "Server User",
+      "description": "User account and media ministry profile in Auxiliadora Media",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "picture": { "type": "string" },
+        "isSubAdmin": { "type": "boolean" },
+        "isAdmin": { "type": "boolean" },
+        "birthday": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "picture", "isSubAdmin", "isAdmin"]
+    },
+    "Applicant": {
+      "title": "Account Applicant",
+      "description": "Membership/account application for Auxiliadora Media portal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "preferredMinistry": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["id", "name", "email", "preferredMinistry", "submittedAt", "status"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Ministry announcement, birthday, or event item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "type", "date"]
+    },
+    "ScheduleRow": {
+      "title": "Schedule Row",
+      "description": "Liturgy and duty schedule assignment row",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "dayName": { "type": "string" },
+        "date": { "type": "string" },
+        "specialService": { "type": "string" },
+        "isLive": { "type": "boolean" }
+      },
+      "required": ["id", "dayName", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/ServerUser" },
+      "description": "Auxiliadora Media account users and stewards"
+    },
+    "/applicants/{applicantId}": {
+      "schema": { "$ref": "#/entities/Applicant" },
+      "description": "Account applications pending admin creation or approval"
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Parish & SocCom announcements"
+    },
+    "/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/ScheduleRow" },
+      "description": "Weekly liturgy duty schedule assignments"
+    }
+  }
+}

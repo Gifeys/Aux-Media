@@ -1,0 +1,8 @@
+{
+  "name": "Remix Auxiliadora Media Schedule",
+  "description": "Auxiliadora Media scheduling application for SocCom servers, including interactive tables, role assignments, real-time statuses, and substitution management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
