@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
@@ -92,21 +93,45 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
+// Helper for static file serving in production
+function serveStaticFiles() {
+  const dirPath = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+  const cwdDist = path.join(process.cwd(), 'dist');
+  
+  let finalDistPath = dirPath;
+  if (fs.existsSync(path.join(dirPath, 'index.html'))) {
+    finalDistPath = dirPath;
+  } else if (fs.existsSync(path.join(cwdDist, 'index.html'))) {
+    finalDistPath = cwdDist;
+  } else if (fs.existsSync(path.join(dirPath, 'dist', 'index.html'))) {
+    finalDistPath = path.join(dirPath, 'dist');
+  }
+
+  console.log(`[SERVER] Serving static assets from: ${finalDistPath}`);
+  app.use(express.static(finalDistPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(finalDistPath, 'index.html'));
+  });
+}
+
 // Vite middleware for development / static serving for production
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+  const isProd = process.env.NODE_ENV === 'production' || (typeof __filename !== 'undefined' && __filename.endsWith('.cjs'));
+
+  if (!isProd) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.warn('[SERVER] Vite dev middleware unavailable, falling back to static serving:', e);
+      serveStaticFiles();
+    }
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    serveStaticFiles();
   }
 
   app.listen(PORT, '0.0.0.0', () => {
@@ -114,4 +139,8 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('[FATAL SERVER ERROR]', err);
+  process.exit(1);
+});
+

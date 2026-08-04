@@ -4,11 +4,12 @@
  */
 
 import React from 'react';
-import { Server, SiteSettings } from '../types';
+import { Server, SiteSettings, Applicant } from '../types';
 
 interface SidebarProps {
   currentUser: Server;
   siteSettings?: SiteSettings;
+  applicants?: Applicant[];
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenNewScheduleModal: () => void;
@@ -19,12 +20,17 @@ interface SidebarProps {
 export default function Sidebar({
   currentUser,
   siteSettings,
+  applicants = [],
   activeTab,
   setActiveTab,
   onOpenNewScheduleModal,
   onOpenSettingsModal,
   onOpenSupportModal
 }: SidebarProps) {
+  const pendingAppsCount = applicants.filter(a => {
+    const st = (a.status || 'pending').toLowerCase();
+    return st === 'pending' || st === 'under_review';
+  }).length;
   return (
     <aside className="hidden lg:flex flex-col fixed left-0 top-16 h-[calc(100vh-64px)] w-[280px] p-5 gap-2 border-r border-[#46464c]/30 bg-[#051424] z-40">
       {/* Brand Header */}
@@ -124,14 +130,21 @@ export default function Sidebar({
         {(currentUser.isAdmin || currentUser.isSubAdmin) && (
           <button
             onClick={() => setActiveTab('admin')}
-            className={`flex items-center gap-4 px-4 py-2.5 rounded-full transition-all text-sm font-semibold cursor-pointer ${
+            className={`flex items-center justify-between px-4 py-2.5 rounded-full transition-all text-sm font-semibold cursor-pointer ${
               activeTab === 'admin'
                 ? 'bg-[#3e495d] text-red-300 shadow-sm'
                 : 'text-[#909096] hover:text-red-300 hover:bg-[#1c2b3c]'
             }`}
           >
-            <span className="material-symbols-outlined text-xl">shield</span>
-            <span>Admin Panel</span>
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-xl">shield</span>
+              <span>Admin Panel</span>
+            </div>
+            {pendingAppsCount > 0 && (
+              <span className="bg-amber-500 text-church-950 text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                {pendingAppsCount}
+              </span>
+            )}
           </button>
         )}
       </nav>

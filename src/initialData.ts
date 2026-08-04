@@ -25,153 +25,6 @@ export const DEFAULT_SERVERS: Server[] = [
     email: 'adrich.glife.abelon@gmail.com',
     password: 'media123',
     accessToken: 'media123'
-  },
-  {
-    id: 'subadmin-1',
-    name: 'Maria Clara',
-    role: 'ppt',
-    roles: ['ppt', 'documentation'],
-    skills: ['PPT Projection', 'Photography & Docu', 'Graphic Arts'],
-    picture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
-    bio: 'Passionate PPT operator and visual designer dedicated to projecting beautiful, accurate liturgical texts and slides for our church services.',
-    workImages: [
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80'
-    ],
-    isAdmin: false,
-    isSubAdmin: true,
-    birthday: 'July 28',
-    email: 'maria@auxiliadora.org',
-    password: 'maria123',
-    accessToken: 'maria123'
-  },
-  {
-    id: 'server-ppt-1',
-    name: 'Juan Dela Cruz',
-    role: 'ppt',
-    roles: ['ppt'],
-    skills: ['PPT Projection', 'Liturgy Slides'],
-    picture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
-    bio: 'Serving with joy in liturgical projection and visual presentation for daily and Sunday Holy Masses.',
-    workImages: [
-      'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80'
-    ],
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'July 24',
-    email: 'juan@auxiliadora.org',
-    password: 'juan123',
-    accessToken: 'juan123'
-  },
-  {
-    id: 'server-live-1',
-    name: 'Pedro Penduko',
-    role: 'live_server',
-    roles: ['live_server'],
-    skills: ['Live Stream Switcher', 'OBS Studio', 'Audio Setup'],
-    picture: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
-    bio: 'Experienced audio and broadcast operator ensuring seamless live streaming and sound fidelity for parish liturgies.',
-    workImages: [
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80'
-    ],
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'August 12',
-    email: 'pedro@auxiliadora.org',
-    password: 'pedro123',
-    accessToken: 'pedro123'
-  },
-  {
-    id: 'server-doc-1',
-    name: 'Leonor Rivera',
-    role: 'documentation',
-    roles: ['documentation'],
-    skills: ['Photography & Docu', 'DSLR Camera Operator', 'Lighting'],
-    picture: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=300&q=80',
-    bio: 'Photographer and documentation server capturing sacred moments, liturgical feasts, and community fellowship.',
-    workImages: [
-      'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80'
-    ],
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'September 05',
-    email: 'leonor@auxiliadora.org',
-    password: 'leonor123',
-    accessToken: 'leonor123'
-  },
-  {
-    id: 'server-reels-1',
-    name: 'Jose Rizal',
-    role: 'reels_editor',
-    roles: ['reels_editor'],
-    picture: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
-    bio: 'Shorts & Reels editor crafting inspiring digital evangelization content for youth and online parishioners.',
-    workImages: [
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80'
-    ],
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'June 19',
-    email: 'jose@auxiliadora.org',
-    password: 'jose123',
-    accessToken: 'jose123'
-  },
-  {
-    id: 'server-ppt-2',
-    name: 'Andres Bonifacio',
-    role: 'ppt',
-    picture: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80',
-    bio: 'Energetic PPT projectionist dedicated to seamless presentation during weekend mass services.',
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'November 30',
-    email: 'andres@auxiliadora.org',
-    accessToken: 'andres123'
-  },
-  {
-    id: 'server-live-2',
-    name: 'Emilio Aguinaldo',
-    role: 'live_server',
-    picture: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80',
-    bio: 'Live broadcast technician ensuring high quality multi-cam video transmission during solemn liturgical events.',
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'March 22',
-    email: 'emilio@auxiliadora.org',
-    accessToken: 'emilio123'
-  },
-  {
-    id: 'server-doc-2',
-    name: 'Melchora Aquino',
-    role: 'documentation',
-    picture: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
-    bio: 'Community media documenter capturing the warmth, faith, and parish activities of Auxiliadora.',
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'January 06',
-    email: 'melchora@auxiliadora.org',
-    accessToken: 'melchora123'
-  },
-  {
-    id: 'server-reels-2',
-    name: 'Gabriela Silang',
-    role: 'reels_editor',
-    picture: 'https://images.unsplash.com/photo-1554151228-14d9def656e4?auto=format&fit=crop&w=300&q=80',
-    bio: 'Creative video editor highlighting daily Gospel reflections, youth ministry clips, and liturgical summaries.',
-    isAdmin: false,
-    isSubAdmin: false,
-    birthday: 'August 05',
-    email: 'gabriela@auxiliadora.org',
-    accessToken: 'gabriela123'
   }
 ];
 
@@ -519,7 +372,7 @@ export const DEFAULT_NOTES: ServerNote[] = [
     title: '🎥 Live Broadcast Camera Checklist',
     content: 'Ensure Camera 1 (Main Altar) focus is calibrated before 5:45 PM. Check line audio input on OBS to avoid clipping during choir songs.',
     authorId: 'admin-1',
-    authorName: 'Glife Bautista',
+    authorName: 'Adrich Glife Abelon',
     authorPicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     isPublic: true,
     category: 'reminder',
@@ -529,9 +382,9 @@ export const DEFAULT_NOTES: ServerNote[] = [
     id: 'note-2',
     title: '💻 PPT Projection Guidelines',
     content: 'Please double-check all response slides for the Gospel reading before the Mass starts. Font size must remain 36pt or higher for readability from back pews.',
-    authorId: 'subadmin-1',
-    authorName: 'Maria Clara',
-    authorPicture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+    authorId: 'admin-1',
+    authorName: 'Adrich Glife Abelon',
+    authorPicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     isPublic: true,
     category: 'duty',
     createdAt: '2026-07-29T14:30:00Z'
@@ -541,7 +394,7 @@ export const DEFAULT_NOTES: ServerNote[] = [
     title: '🔒 Private Reminders for Sunday Mass',
     content: 'Remind documentation team to capture photos during priest procession and Eucharistic prayer. Bring extra memory card for backup.',
     authorId: 'admin-1',
-    authorName: 'Glife Bautista',
+    authorName: 'Adrich Glife Abelon',
     authorPicture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     isPublic: false,
     category: 'quick',

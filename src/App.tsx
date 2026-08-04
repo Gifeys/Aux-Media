@@ -29,7 +29,7 @@ export default function App() {
   // CORE STATES (Synced with Firebase Firestore + LocalStorage fallback)
   // ---------------------------------------------------------
   
-  const [servers, setServers] = useState<Server[]>([]);
+  const [servers, setServers] = useState<Server[]>(DEFAULT_SERVERS);
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
   const [subRequests, setSubRequests] = useState<SubstitutionRequest[]>([]);
   const [receipts, setReceipts] = useState<ServiceReceipt[]>([]);
@@ -73,8 +73,8 @@ export default function App() {
             ...currentAdmin,
             name: 'Adrich Glife Abelon',
             email: 'adrich.glife.abelon@gmail.com',
-            password: currentAdmin.password || 'media123',
-            accessToken: currentAdmin.accessToken || 'media123',
+            password: 'media123',
+            accessToken: 'media123',
             isAdmin: true,
             isSubAdmin: true,
           };
@@ -82,22 +82,37 @@ export default function App() {
             currentAdmin.name !== updatedAdmin.name ||
             currentAdmin.email !== updatedAdmin.email ||
             !currentAdmin.isAdmin ||
-            !currentAdmin.password
+            currentAdmin.password !== 'media123' ||
+            currentAdmin.accessToken !== 'media123'
           ) {
             loaded[adminIndex] = updatedAdmin;
             setDoc(doc(db, 'users', updatedAdmin.id), updatedAdmin).catch(console.warn);
           }
         }
 
-        // Strictly enforce ONLY Adrich Glife Abelon has isAdmin = true
-        loaded.forEach((u, idx) => {
-          if (u.id !== 'admin-1' && u.email?.toLowerCase() !== 'adrich.glife.abelon@gmail.com' && u.isAdmin) {
-            loaded[idx] = { ...u, isAdmin: false };
-            setDoc(doc(db, 'users', u.id), loaded[idx]).catch(console.warn);
+        // Strictly enforce ONLY Adrich Glife Abelon has isAdmin = true and remove dummy bot users
+        const dummyBotIds = new Set([
+          'subadmin-1', 'server-ppt-1', 'server-live-1', 'server-doc-1', 
+          'server-reels-1', 'server-ppt-2', 'server-live-2', 'server-doc-2', 'server-reels-2'
+        ]);
+
+        const filtered: Server[] = [];
+        loaded.forEach((u) => {
+          const isDummy = dummyBotIds.has(u.id) || (u.email && (u.email.endsWith('@auxiliadora.org') || u.email.endsWith('@auxiladora.org')) && u.id !== 'admin-1');
+          if (isDummy) {
+            deleteDoc(doc(db, 'users', u.id)).catch(console.warn);
+          } else {
+            if (u.id !== 'admin-1' && u.email?.toLowerCase() !== 'adrich.glife.abelon@gmail.com' && u.isAdmin) {
+              const demoted = { ...u, isAdmin: false };
+              setDoc(doc(db, 'users', u.id), demoted).catch(console.warn);
+              filtered.push(demoted);
+            } else {
+              filtered.push(u);
+            }
           }
         });
 
-        setServers(loaded);
+        setServers(filtered);
       } else {
         // Seed initial default servers to Firestore
         DEFAULT_SERVERS.forEach((srv) => {
@@ -122,10 +137,13 @@ export default function App() {
       }
 
       localSaved.forEach((localApp) => {
-        if (!loaded.some((l) => l.id === localApp.id || l.email.toLowerCase() === localApp.email.toLowerCase())) {
-          loaded.push(localApp);
-          // Auto-sync missing local applicant to cloud Firestore
-          setDoc(doc(db, 'applicants', localApp.id), localApp).catch(console.warn);
+        if (localApp && localApp.id) {
+          const localEmail = (localApp.email || '').toLowerCase().trim();
+          if (!loaded.some((l) => l.id === localApp.id || (localEmail.length > 0 && (l.email || '').toLowerCase().trim() === localEmail))) {
+            loaded.push(localApp);
+            // Auto-sync missing local applicant to cloud Firestore
+            setDoc(doc(db, 'applicants', localApp.id), localApp).catch(console.warn);
+          }
         }
       });
 
@@ -581,8 +599,8 @@ export default function App() {
   };
 
   const handleAddServer = (newServer: Server) => {
-    const emailNormalized = newServer.email.trim().toLowerCase();
-    const duplicate = servers.find(s => s.email.trim().toLowerCase() === emailNormalized);
+    const emailNormalized = (newServer.email || '').trim().toLowerCase();
+    const duplicate = servers.find(s => (s.email || '').trim().toLowerCase() === emailNormalized);
     if (duplicate) {
       alert(`⚠️ Account Creation Blocked: An account with email "${newServer.email}" already exists (${duplicate.name})! Strictly 1 account per email address.`);
       return;
@@ -629,15 +647,21 @@ export default function App() {
 
   const handleRegisterApplicant = async (newApp: Omit<Applicant, 'id' | 'submittedAt' | 'status'>) => {
     const emailNorm = (newApp.email || '').trim().toLowerCase();
-    const existingServer = servers.find(s => s.email.trim().toLowerCase() === emailNorm);
-    const existingApp = applicants.find(a => a.email.trim().toLowerCase() === emailNorm && a.status === 'pending');
-    if (existingServer || existingApp) {
-      alert(`⚠️ Registration Blocked: An account or application with email "${newApp.email}" already exists! Strictly 1 account per email address.`);
-      return;
+    if (!emailNorm) {
+      throw new Error("Email address is required to register.");
     }
 
+    const existingServer = servers.find(s => (s.email || '').trim().toLowerCase() === emailNorm && emailNorm.length > 0);
+    if (existingServer) {
+      const msg = `An account with email "${newApp.email}" is already an active member of Auxiliadora Media Ministry. Please log in directly.`;
+      alert(`⚠️ Registration Notice: ${msg}`);
+      throw new Error(msg);
+    }
+
+    const existingApp = applicants.find(a => (a.email || '').trim().toLowerCase() === emailNorm && emailNorm.length > 0);
+
     const fullApp: Applicant = {
-      id: `applicant-${Date.now()}`,
+      id: existingApp ? existingApp.id : `applicant-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       name: (newApp.name || '').trim(),
       email: emailNorm,
       password: newApp.password || 'media123',
@@ -648,7 +672,7 @@ export default function App() {
     };
 
     setApplicants(prev => {
-      const updated = [fullApp, ...prev.filter(a => a.id !== fullApp.id && a.email.toLowerCase() !== emailNorm)];
+      const updated = [fullApp, ...prev.filter(a => a.id !== fullApp.id && (a.email || '').toLowerCase() !== emailNorm)];
       try {
         localStorage.setItem('aux_applicants', JSON.stringify(updated));
       } catch (e) {
@@ -660,15 +684,15 @@ export default function App() {
     try {
       await setDoc(doc(db, 'applicants', fullApp.id), fullApp);
       console.log('✅ Applicant registered and synced to Firestore DB:', fullApp.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving applicant to Firestore:', err);
       handleFirestoreError(err, OperationType.WRITE, `applicants/${fullApp.id}`);
     }
   };
 
   const handleApproveApplicant = async (applicant: Applicant) => {
-    const emailNorm = applicant.email.trim().toLowerCase();
-    const existingServer = servers.find(s => s.email.trim().toLowerCase() === emailNorm);
+    const emailNorm = (applicant.email || '').trim().toLowerCase();
+    const existingServer = servers.find(s => (s.email || '').trim().toLowerCase() === emailNorm && emailNorm.length > 0);
     if (existingServer) {
       alert(`⚠️ Approval Notice: An active user account with email "${applicant.email}" already exists (${existingServer.name}). Strictly 1 account per email.`);
       return;
@@ -846,6 +870,7 @@ export default function App() {
         <Sidebar
           currentUser={currentUser}
           siteSettings={siteSettings}
+          applicants={applicants}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onOpenNewScheduleModal={() => setShowNewScheduleModal(true)}

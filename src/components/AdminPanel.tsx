@@ -41,7 +41,8 @@ import {
   Sliders,
   Shield,
   FileText,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -812,6 +813,10 @@ const ActiveMediaDirectory = React.memo(({
   const [meetDateTime, setMeetDateTime] = useState<string>('2026-08-01 14:00');
   const [meetLocation, setMeetLocation] = useState<string>('Auxiliadora Media Studio / Zoom Online');
 
+  // Loading & Dispatching Protection States to prevent double-clicking & duplicate emails
+  const [isDispatchingApproval, setIsDispatchingApproval] = useState<boolean>(false);
+  const [isDispatchingMeeting, setIsDispatchingMeeting] = useState<boolean>(false);
+
   useEffect(() => {
     if (approvingApplicant) {
       const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
@@ -872,7 +877,10 @@ const ActiveMediaDirectory = React.memo(({
   const [applicantFilter, setApplicantFilter] = useState<'pending' | 'all'>('pending');
 
   const pendingApplicants = useMemo(() => {
-    return (applicants || []).filter(a => a.status === 'pending' || a.status === 'under_review');
+    return (applicants || []).filter(a => {
+      const st = (a.status || 'pending').toLowerCase();
+      return st === 'pending' || st === 'under_review';
+    });
   }, [applicants]);
 
   const displayedApplicants = useMemo(() => {
@@ -1152,8 +1160,11 @@ const ActiveMediaDirectory = React.memo(({
                     Cancel
                   </button>
                   <button
+                    disabled={isDispatchingApproval}
                     onClick={async () => {
+                      if (isDispatchingApproval) return;
                       if (onApproveApplicant && approvingApplicant) {
+                        setIsDispatchingApproval(true);
                         try {
                           // Directly dispatch email via server API route
                           await fetch('/api/send-email', {
@@ -1168,17 +1179,27 @@ const ActiveMediaDirectory = React.memo(({
                           });
                         } catch (err) {
                           console.error('Email dispatch error:', err);
+                        } finally {
+                          onApproveApplicant(approvingApplicant);
+                          alert(`✅ Email automatically sent from ${appEmailFrom || 'adrich.glife.abelon@gmail.com'} directly to ${appEmailTo}!\n\nApplicant ${approvingApplicant.name} has been officially approved.`);
+                          setIsDispatchingApproval(false);
+                          setApprovingApplicant(null);
                         }
-
-                        onApproveApplicant(approvingApplicant);
-                        alert(`✅ Email automatically sent from ${appEmailFrom || 'adrich.glife.abelon@gmail.com'} directly to ${appEmailTo}!\n\nApplicant ${approvingApplicant.name} has been officially approved.`);
-                        setApprovingApplicant(null);
                       }
                     }}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900/60 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer disabled:cursor-wait transition-all"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Approve & Send Greetings Email
+                    {isDispatchingApproval ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Approving & Sending Email...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Approve & Send Greetings Email
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1292,8 +1313,11 @@ const ActiveMediaDirectory = React.memo(({
                   </button>
                   <button
                     type="button"
+                    disabled={isDispatchingMeeting}
                     onClick={async () => {
+                      if (isDispatchingMeeting) return;
                       if (schedulingMeetingApplicant) {
+                        setIsDispatchingMeeting(true);
                         try {
                           await fetch('/api/send-email', {
                             method: 'POST',
@@ -1307,24 +1331,34 @@ const ActiveMediaDirectory = React.memo(({
                           });
                         } catch (err) {
                           console.error('Email dispatch error:', err);
-                        }
+                        } finally {
+                          if (onScheduleMeetingApplicant) {
+                            onScheduleMeetingApplicant(schedulingMeetingApplicant.id, {
+                              dateTime: meetDateTime,
+                              location: meetLocation,
+                              notes: 'Interview meeting requested.'
+                            });
+                          }
 
-                        if (onScheduleMeetingApplicant) {
-                          onScheduleMeetingApplicant(schedulingMeetingApplicant.id, {
-                            dateTime: meetDateTime,
-                            location: meetLocation,
-                            notes: 'Interview meeting requested.'
-                          });
+                          alert(`✅ Under Review status email & meeting schedule automatically sent directly to ${meetEmailTo}!\n\nApplicant ${schedulingMeetingApplicant.name} has been set to Under Review.`);
+                          setIsDispatchingMeeting(false);
+                          setSchedulingMeetingApplicant(null);
                         }
-
-                        alert(`✅ Under Review status email & meeting schedule automatically sent directly to ${meetEmailTo}!\n\nApplicant ${schedulingMeetingApplicant.name} has been set to Under Review.`);
-                        setSchedulingMeetingApplicant(null);
                       }
                     }}
-                    className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer transition-all font-mono"
+                    className="px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-900/60 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer disabled:cursor-wait transition-all font-mono"
                   >
-                    <Calendar className="w-4 h-4" />
-                    Send Under Review & Schedule Meeting Email
+                    {isDispatchingMeeting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Sending Meeting Email...
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="w-4 h-4" />
+                        Send Under Review & Schedule Meeting Email
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1419,9 +1453,13 @@ export default function AdminPanel({
     return (applicants || []).filter(a => a.status === 'pending' || a.status === 'under_review').length;
   }, [applicants]);
 
-  const [adminTab, setAdminTab] = useState<'requests' | 'scheduling' | 'members' | 'receipts' | 'branding'>(() => {
-    return pendingApplicantsCount > 0 ? 'requests' : 'scheduling';
-  });
+  const [adminTab, setAdminTab] = useState<'requests' | 'scheduling' | 'members' | 'receipts' | 'branding'>('requests');
+
+  useEffect(() => {
+    if (pendingApplicantsCount > 0) {
+      setAdminTab('requests');
+    }
+  }, [pendingApplicantsCount]);
 
   // Schedule Email Dispatch Modal State
   const [emailModalData, setEmailModalData] = useState<ScheduleEmailDispatchResult | null>(null);
@@ -1902,6 +1940,33 @@ export default function AdminPanel({
   return (
     <div className="space-y-6 animate-fade-in">
       
+      {/* 🔔 PENDING JOIN REQUESTS ALERT BANNER */}
+      {pendingApplicantsCount > 0 && (
+        <div className="bg-gradient-to-r from-amber-950/90 via-amber-900/60 to-church-900 border-2 border-amber-500/70 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-church-950 flex items-center justify-center font-black shrink-0 shadow-md">
+              <UserPlus className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-amber-200 flex items-center gap-2 font-serif">
+                <span>🔔 Action Required: {pendingApplicantsCount} Pending Join Request{pendingApplicantsCount > 1 ? 's' : ''}</span>
+                <span className="bg-amber-400 text-church-950 text-[10px] font-mono font-black px-2 py-0.5 rounded-full uppercase">Review Now</span>
+              </h4>
+              <p className="text-xs text-amber-300/90 font-mono mt-0.5">
+                New volunteers have submitted applications to join Auxiliadora Media Ministry. Review and approve their account requests.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setAdminTab('requests')}
+            className="px-4 py-2 text-xs font-black bg-amber-500 hover:bg-amber-400 text-church-950 rounded-xl shadow-lg transition-all cursor-pointer whitespace-nowrap font-mono shrink-0 flex items-center gap-1.5 uppercase tracking-wide"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Review Join Requests ({pendingApplicantsCount})</span>
+          </button>
+        </div>
+      )}
+
       {/* 📱 LIVE CONNECTED DEVICES & ACTIVE SESSIONS MONITOR */}
       <div className="bg-[#122131] border border-emerald-500/30 rounded-2xl p-4 shadow-md space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#46464c]/30 pb-3">
@@ -1950,32 +2015,6 @@ export default function AdminPanel({
           </div>
         )}
       </div>
-
-      {/* 🔔 PENDING JOIN REQUESTS ALERT BANNER */}
-      {pendingApplicantsCount > 0 && adminTab !== 'requests' && (
-        <div className="bg-gradient-to-r from-amber-950/90 via-amber-900/60 to-church-900 border border-amber-500/60 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/40 shrink-0">
-              <UserPlus className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-amber-200 flex items-center gap-2 font-serif">
-                <span>🔔 Action Required: {pendingApplicantsCount} New Join Request{pendingApplicantsCount > 1 ? 's' : ''}</span>
-              </h4>
-              <p className="text-xs text-amber-300/80 font-mono">
-                People have submitted applications to join Auxiliadora Media Ministry. Review and approve their account requests.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setAdminTab('requests')}
-            className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-church-950 rounded-xl shadow-md transition-all cursor-pointer whitespace-nowrap font-mono shrink-0 flex items-center gap-1.5"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>View Join Requests ({pendingApplicantsCount})</span>
-          </button>
-        </div>
-      )}
 
       {/* Tab Switchers inside Admin */}
       <div className="flex border border-church-700 bg-church-950 p-1 rounded-xl max-w-3xl shadow-inner overflow-x-auto custom-scrollbar">

@@ -46,6 +46,11 @@ export default function Header({
   const [searchQuery, setSearchQuery] = useState('');
   const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
 
+  const pendingAppsCount = (applicants || []).filter(a => {
+    const st = (a.status || 'pending').toLowerCase();
+    return st === 'pending' || st === 'under_review';
+  }).length;
+
   // Build Notification List dynamically
   const notifList: { id: string; title: string; subtitle: string; time: string; icon: string; type: 'announcement' | 'schedule' | 'system' | 'applicant'; linkTab?: string }[] = [];
 
@@ -186,6 +191,19 @@ export default function Header({
 
       {/* Right Controls */}
       <div className="flex items-center gap-2 sm:gap-4">
+        {/* Pending Join Requests Header Pill for Admin/Sub-Admin */}
+        {(currentUser.isAdmin || currentUser.isSubAdmin) && pendingAppsCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('admin')}
+            className="bg-amber-500 hover:bg-amber-400 text-church-950 px-3 py-1 rounded-full text-xs font-mono font-black flex items-center gap-1.5 shadow-md animate-pulse transition-all cursor-pointer border border-amber-300 shrink-0"
+            title="Click to view and approve pending account join requests"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>{pendingAppsCount} Join Req</span>
+          </button>
+        )}
+
         {/* Active Devices Online Indicator */}
         <div 
           className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold shadow-inner"
@@ -399,10 +417,17 @@ export default function Header({
           {(currentUser.isAdmin || currentUser.isSubAdmin) && (
             <button 
               onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'admin' ? 'bg-[#3e495d] text-red-300' : 'text-[#909096]'}`}
+              className={`flex items-center justify-between w-full px-4 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'admin' ? 'bg-[#3e495d] text-red-300' : 'text-[#909096]'}`}
             >
-              <span className="material-symbols-outlined">shield</span>
-              <span>Admin Panel</span>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined">shield</span>
+                <span>Admin Panel</span>
+              </div>
+              {pendingAppsCount > 0 && (
+                <span className="bg-amber-500 text-church-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-md animate-pulse">
+                  {pendingAppsCount} Join Req
+                </span>
+              )}
             </button>
           )}
         </div>

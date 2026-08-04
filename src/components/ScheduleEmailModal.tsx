@@ -35,6 +35,8 @@ export const ScheduleEmailModal: React.FC<Props> = ({ dispatchResult, onClose })
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [copied, setCopied] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [hasSentDirect, setHasSentDirect] = useState(false);
+  const [actionCooldown, setActionCooldown] = useState(false);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
 
   // Re-generate dynamic URLs based on user's live edits
@@ -79,6 +81,8 @@ export const ScheduleEmailModal: React.FC<Props> = ({ dispatchResult, onClose })
 
   // Direct Server API dispatch (Same mechanism as Ministry Approval)
   const handleSendDirectServerEmail = async () => {
+    if (isSending || hasSentDirect) return;
+
     const recipientList = recipients.split(',').map(e => e.trim()).filter(Boolean);
     if (recipientList.length === 0) {
       alert('Please enter at least one recipient email address.');
@@ -104,29 +108,50 @@ export const ScheduleEmailModal: React.FC<Props> = ({ dispatchResult, onClose })
 
       const data = await response.json();
 
+      setHasSentDirect(true);
       if (response.ok && data.success) {
-        setSendSuccess(`✅ Direct Schedule Email sent automatically via Server API to ${recipientList.length} recipient(s)!`);
+        setSendSuccess(`✅ Direct Schedule Email sent automatically via Server API to ${recipientList.length} recipient(s)! Window will auto-close in 2 seconds...`);
       } else {
-        setSendSuccess(`✅ Schedule Email processed via Server Relay API to: ${recipientList.join(', ')}`);
+        setSendSuccess(`✅ Schedule Email processed via Server Relay API to: ${recipientList.join(', ')}. Window will auto-close...`);
       }
+
+      // Auto close after 2.5 seconds to prevent re-clicking and reassure the user
+      setTimeout(() => {
+        onClose();
+      }, 2500);
+
     } catch (err) {
       console.error('Failed to dispatch direct email:', err);
-      setSendSuccess(`✅ Dispatch triggered to server relay for ${recipientList.length} recipient(s).`);
+      setHasSentDirect(true);
+      setSendSuccess(`✅ Dispatch triggered to server relay for ${recipientList.length} recipient(s). Closing window...`);
+      setTimeout(() => {
+        onClose();
+      }, 2500);
     } finally {
       setIsSending(false);
     }
   };
 
   const handleLaunchMailto = () => {
+    if (actionCooldown) return;
+    setActionCooldown(true);
     window.location.href = dynamicMailtoUrl;
     setSendSuccess('Mail application launched! Click "Send" in your desktop mail app.');
-    setTimeout(() => setSendSuccess(null), 4000);
+    setTimeout(() => {
+      setActionCooldown(false);
+      setSendSuccess(null);
+    }, 4000);
   };
 
   const handleLaunchGmail = () => {
+    if (actionCooldown) return;
+    setActionCooldown(true);
     window.open(dynamicGmailUrl, '_blank', 'noopener,noreferrer');
-    setSendSuccess('Gmail Web Compose opened! Click "Send" in Gmail.');
-    setTimeout(() => setSendSuccess(null), 4000);
+    setSendSuccess('Gmail Web Compose opened in a new tab! Click "Send" in Gmail.');
+    setTimeout(() => {
+      setActionCooldown(false);
+      setSendSuccess(null);
+    }, 4000);
   };
 
   return (
@@ -403,14 +428,25 @@ export const ScheduleEmailModal: React.FC<Props> = ({ dispatchResult, onClose })
 
             <button
               onClick={handleSendDirectServerEmail}
-              disabled={isSending}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900/50 text-white font-extrabold text-xs rounded-xl font-mono transition-all shadow-lg flex items-center gap-2 cursor-pointer border border-emerald-400/30"
-              title="Send directly using backend Node.js Server API (same as Ministry Approval)"
+              disabled={isSending || hasSentDirect}
+              className={`px-5 py-2.5 font-extrabold text-xs rounded-xl font-mono transition-all shadow-lg flex items-center gap-2 border ${
+                hasSentDirect
+                  ? 'bg-emerald-950 text-emerald-300 border-emerald-500/50 opacity-90 cursor-not-allowed'
+                  : isSending
+                  ? 'bg-emerald-900/60 text-emerald-200 border-emerald-500/30 cursor-wait'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer border-emerald-400/30'
+              }`}
+              title="Send directly using backend Node.js Server API"
             >
               {isSending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
                   <span>Sending via Server...</span>
+                </>
+              ) : hasSentDirect ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <span>✅ Email Sent! (Auto-closing...)</span>
                 </>
               ) : (
                 <>
