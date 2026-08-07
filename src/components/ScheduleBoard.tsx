@@ -168,7 +168,7 @@ export default function ScheduleBoard({
     // Auto-dispatch email via server API route if assigned recipients exist
     if (dispatch.batchEmails.length > 0) {
       try {
-        await fetch('/api/send-email', {
+        const resp = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -178,6 +178,10 @@ export default function ScheduleBoard({
             text: dispatch.body
           })
         });
+        const resData = await resp.json().catch(() => ({}));
+        if (!resp.ok || !resData.success) {
+          alert(`⚠️ Email Dispatch Notice: ${resData.error || 'Failed to send email. Please check Vercel environment variables.'}`);
+        }
       } catch (err) {
         console.error('Failed to auto-dispatch schedule email:', err);
       }

@@ -1742,7 +1742,7 @@ export default function AdminPanel({
     const emailData = generateScheduleEmailData(newSpecialRow, servers);
     if (emailData.batchEmails.length > 0) {
       try {
-        await fetch('/api/send-email', {
+        const resp = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1752,6 +1752,10 @@ export default function AdminPanel({
             text: emailData.body
           })
         });
+        const resData = await resp.json().catch(() => ({}));
+        if (!resp.ok || !resData.success) {
+          alert(`⚠️ Email Notice: ${resData.error || 'Could not send email automatically. Please check Vercel environment variables.'}`);
+        }
       } catch (err) {
         console.error('Failed to dispatch special serve email:', err);
       }
@@ -1907,7 +1911,7 @@ export default function AdminPanel({
     // Auto-dispatch email via server API route to all assigned recipients
     if (emailData.batchEmails.length > 0) {
       try {
-        await fetch('/api/send-email', {
+        const resp = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1917,6 +1921,10 @@ export default function AdminPanel({
             text: emailData.body
           })
         });
+        const resData = await resp.json().catch(() => ({}));
+        if (!resp.ok || !resData.success) {
+          alert(`⚠️ Email Dispatch Notice: ${resData.error || 'Failed to send email. Please verify Vercel SMTP_PASS setting.'}`);
+        }
       } catch (err) {
         console.error('Failed to auto-dispatch schedule email:', err);
       }

@@ -12,9 +12,29 @@ const PORT = 3000;
 app.use(express.json());
 
 // API route for automated direct email dispatch
+app.get('/api/send-email', (req, res) => {
+  const rawPass = process.env.SMTP_PASS || '';
+  const cleanPass = rawPass.replace(/\s+/g, '');
+  const user = process.env.SMTP_USER || 'glifebautista@gmail.com';
+
+  return res.json({
+    status: 'online',
+    platform: 'Express / Cloud Run',
+    smtpUser: user,
+    smtpPassConfigured: Boolean(cleanPass),
+    smtpPassLength: cleanPass.length,
+    note: cleanPass.length === 16 
+      ? '✅ Gmail App Password length is 16 chars (correct).' 
+      : cleanPass.length > 0 
+        ? `⚠️ Warning: App password length is ${cleanPass.length} (expected 16 chars).` 
+        : '❌ SMTP_PASS is missing in environment variables!',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.post('/api/send-email', async (req, res) => {
   try {
-    const { to, subject, text, html, from } = req.body;
+    const { to, subject, text, html, from } = req.body || {};
 
     if (!to || !subject || !text) {
       return res.status(400).json({ 
@@ -25,19 +45,26 @@ app.post('/api/send-email', async (req, res) => {
     const senderEmail = from || process.env.SMTP_USER || 'adrich.glife.abelon@gmail.com';
     const senderDisplay = `Adrich Glife Abelon (Auxiliadora Media Admin) <${senderEmail}>`;
 
-    console.log(`[EMAIL DISPATCH] Direct sending email to ${to} from ${senderDisplay}...`);
-    console.log(`[EMAIL SUBJECT] ${subject}`);
+    const smtpUser = process.env.SMTP_USER || 'glifebautista@gmail.com';
+    const rawSmtpPass = process.env.SMTP_PASS || '';
+    const cleanSmtpPass = rawSmtpPass.replace(/\s+/g, '');
+
+    console.log(`[EMAIL DISPATCH] Direct sending email to ${to} via ${smtpUser}...`);
 
     let info: any = null;
 
-    // Check if custom SMTP pass is set
-    if (process.env.SMTP_PASS) {
+    if (cleanSmtpPass) {
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
-          user: process.env.SMTP_USER || 'glifebautista@gmail.com',
-          pass: process.env.SMTP_PASS,
+          user: smtpUser,
+          pass: cleanSmtpPass,
         },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
       });
 
       info = await transporter.sendMail({
@@ -49,7 +76,7 @@ app.post('/api/send-email', async (req, res) => {
       });
       console.log(`[EMAIL SENT VIA SMTP] Message ID: ${info.messageId}`);
     } else {
-      // Automatic fallback/test transporter so every click dispatches directly without failure
+      // Fallback test transporter if no SMTP pass is provided
       try {
         const testAccount = await nodemailer.createTestAccount();
         const transporter = nodemailer.createTransport({
@@ -70,7 +97,7 @@ app.post('/api/send-email', async (req, res) => {
           html: html || text.replace(/\n/g, '<br/>'),
         });
 
-        console.log(`[AUTOMATED DIRECT EMAIL DISPATCHED] Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+        console.log(`[SIMULATED DISPATCHED] Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
       } catch (err) {
         console.warn('[SMTP DISPATCH NOTICE] Fallback simulation mode active:', err);
       }
@@ -87,8 +114,16 @@ app.post('/api/send-email', async (req, res) => {
     });
   } catch (error: any) {
     console.error('[EMAIL ERROR]', error);
+
+    let userFriendlyError = error.message || 'Failed to send email directly';
+    if (userFriendlyError.includes('Invalid login') || userFriendlyError.includes('535')) {
+      userFriendlyError = 'Gmail Authentication Failed (535 Bad Credentials). Ensure SMTP_PASS is a 16-character Google "App Password", not your standard Gmail password.';
+    }
+
     return res.status(500).json({ 
-      error: error.message || 'Failed to send email directly' 
+      success: false,
+      error: userFriendlyError,
+      details: error.message
     });
   }
 });
