@@ -328,7 +328,7 @@ const ServerCardItem = React.memo(({
     if (!newPass || newPass.length < 3) return;
     if (onUpdatePassword) {
       onUpdatePassword(server.id, newPass);
-      alert(`Password updated for ${server.name}! New password: ${newPass}`);
+      alert(isSelf ? 'Your password has been updated successfully!' : `Password reset successfully for ${server.name}!`);
       setNewPass('');
       setShowEditPass(false);
     }
@@ -684,14 +684,10 @@ const ServerCardItem = React.memo(({
             </div>
           ) : (
             <div className="inline-flex items-center gap-1.5 bg-church-900/80 px-2 py-0.5 rounded border border-church-750">
-              {(!server.password || server.password === 'media123') && (!server.accessToken || server.accessToken === 'media123') ? (
-                <span className="text-amber-300/90 font-mono text-[9px] font-bold">Default (media123)</span>
-              ) : (
-                <span className="text-emerald-400 font-mono text-[9px] flex items-center gap-1 font-bold">
-                  <span>🔒</span>
-                  <span>Private Password Set</span>
-                </span>
-              )}
+              <span className="text-emerald-400 font-mono text-[9px] flex items-center gap-1 font-bold">
+                <span>🔒</span>
+                <span>Protected & Encrypted</span>
+              </span>
             </div>
           )}
         </div>
@@ -1994,7 +1990,7 @@ export default function AdminPanel({
     setNewMemberRoles(['ppt']);
     setNewMemberIsSub(false);
     setNewMemberIsAdmin(false);
-    alert(`New SocCom member added to directory! Default login password: ${passwordVal}`);
+    alert(`New SocCom member added to directory! User created with account access.`);
   };
 
   return (
@@ -2483,7 +2479,7 @@ export default function AdminPanel({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gold-300">Default Password</label>
                 <input
-                  type="text"
+                  type="password"
                   required
                   placeholder="media123"
                   value={newMemberPassword}

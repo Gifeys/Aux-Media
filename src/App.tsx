@@ -73,17 +73,15 @@ export default function App() {
             ...currentAdmin,
             name: 'Adrich Glife Abelon',
             email: 'adrich.glife.abelon@gmail.com',
-            password: 'media123',
-            accessToken: 'media123',
+            password: currentAdmin.password || currentAdmin.accessToken || 'media123',
+            accessToken: currentAdmin.accessToken || currentAdmin.password || 'media123',
             isAdmin: true,
             isSubAdmin: true,
           };
           if (
             currentAdmin.name !== updatedAdmin.name ||
             currentAdmin.email !== updatedAdmin.email ||
-            !currentAdmin.isAdmin ||
-            currentAdmin.password !== 'media123' ||
-            currentAdmin.accessToken !== 'media123'
+            !currentAdmin.isAdmin
           ) {
             loaded[adminIndex] = updatedAdmin;
             setDoc(doc(db, 'users', updatedAdmin.id), updatedAdmin).catch(console.warn);

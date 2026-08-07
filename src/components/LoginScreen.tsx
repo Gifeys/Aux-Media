@@ -476,12 +476,10 @@ void main() {
       }
 
       if (match) {
-        const isPasswordCorrect =
-          (match.password && match.password === password) ||
-          (match.accessToken && match.accessToken === password) ||
-          password === 'media123' ||
-          password === 'steward123' ||
-          ((!match.password || match.password === 'media123') && (!match.accessToken || match.accessToken === 'media123'));
+        const expectedPassword = (match.password || match.accessToken || 'media123').trim();
+        const inputPassword = password.trim();
+
+        const isPasswordCorrect = inputPassword === expectedPassword;
 
         if (isPasswordCorrect) {
           const loginRes = onLoginSuccess(match.id);
@@ -490,7 +488,7 @@ void main() {
             setIsLoading(false);
           }
         } else {
-          setError('Invalid access token for this media member.');
+          setError('Invalid access password for this media account.');
           setIsLoading(false);
         }
       } else {
