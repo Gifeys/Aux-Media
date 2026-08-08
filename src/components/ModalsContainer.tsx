@@ -358,10 +358,21 @@ export default function ModalsContainer({
 
                 <div className="space-y-2">
                   <div>
-                    <label className="block text-[10px] text-[#909096] uppercase font-mono mb-1">New Password</label>
+                    <label className="block text-[10px] text-gold-300 uppercase font-mono mb-1 font-semibold">1. Enter Old / Current Password</label>
                     <input
                       type="password"
-                      placeholder="Enter new password"
+                      placeholder="Enter current password"
+                      value={currentPassInput}
+                      onChange={(e) => setCurrentPassInput(e.target.value)}
+                      className="w-full bg-[#030a14] border border-[#46464c]/60 rounded-lg p-2 text-xs text-[#d4e4fa] focus:outline-none focus:border-[#0b57d0] font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-gold-300 uppercase font-mono mb-1 font-semibold">2. Enter New Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter new password (min 3 chars)"
                       value={newPassInput}
                       onChange={(e) => setNewPassInput(e.target.value)}
                       className="w-full bg-[#030a14] border border-[#46464c]/60 rounded-lg p-2 text-xs text-[#d4e4fa] focus:outline-none focus:border-[#0b57d0] font-mono"
@@ -369,7 +380,7 @@ export default function ModalsContainer({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-[#909096] uppercase font-mono mb-1">Confirm New Password</label>
+                    <label className="block text-[10px] text-gold-300 uppercase font-mono mb-1 font-semibold">3. Confirm New Password</label>
                     <input
                       type="password"
                       placeholder="Confirm new password"
@@ -382,24 +393,39 @@ export default function ModalsContainer({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!newPassInput || newPassInput.length < 3) {
-                        setPassMessage('Password must be at least 3 characters long.');
+                      const actualCurrentPass = (currentUser.password || currentUser.accessToken || 'media123').trim();
+                      
+                      if (!currentPassInput || currentPassInput.trim() !== actualCurrentPass) {
+                        setPassMessage('❌ Incorrect current password. Please enter your old password correctly.');
                         return;
                       }
-                      if (newPassInput !== confirmPassInput) {
-                        setPassMessage('Passwords do not match.');
+
+                      if (!newPassInput || newPassInput.trim().length < 3) {
+                        setPassMessage('❌ New password must be at least 3 characters long.');
                         return;
                       }
+
+                      if (newPassInput.trim() !== confirmPassInput.trim()) {
+                        setPassMessage('❌ New password and confirmation do not match.');
+                        return;
+                      }
+
+                      if (newPassInput.trim() === actualCurrentPass) {
+                        setPassMessage('⚠️ New password must be different from your current password.');
+                        return;
+                      }
+
                       if (onUpdatePassword) {
-                        onUpdatePassword(currentUser.id, newPassInput);
-                        setPassMessage('Password updated successfully! ✅');
+                        onUpdatePassword(currentUser.id, newPassInput.trim());
+                        setPassMessage('✅ Password updated successfully! Your default password has been removed and your account is secured.');
+                        setCurrentPassInput('');
                         setNewPassInput('');
                         setConfirmPassInput('');
                       }
                     }}
                     className="w-full bg-gold-600 hover:bg-gold-500 text-church-950 font-bold py-2 rounded-lg text-xs transition-colors cursor-pointer"
                   >
-                    Update Password
+                    Update Password & Save
                   </button>
                 </div>
               </div>

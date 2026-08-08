@@ -234,7 +234,9 @@ const ServerCardItem = React.memo(({
   const [showEditPic, setShowEditPic] = useState(false);
   const [editPicUrl, setEditPicUrl] = useState<string>(server.picture || '');
   const [isProcessingPic, setIsProcessingPic] = useState(false);
+  const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
   const [revealPass, setRevealPass] = useState(false);
 
   const isSelf = Boolean(currentUser && currentUser.id === server.id);
@@ -325,11 +327,39 @@ const ServerCardItem = React.memo(({
 
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPass || newPass.length < 3) return;
+    const actualCurrentPass = (server.password || server.accessToken || 'media123').trim();
+
+    if (isSelf) {
+      if (!oldPass || oldPass.trim() !== actualCurrentPass) {
+        alert('❌ Incorrect current password. Please enter your old password correctly.');
+        return;
+      }
+    }
+
+    if (!newPass || newPass.trim().length < 3) {
+      alert('❌ New password must be at least 3 characters long.');
+      return;
+    }
+
+    if (newPass.trim() !== confirmPass.trim()) {
+      alert('❌ New password and confirm password do not match.');
+      return;
+    }
+
+    if (isSelf && newPass.trim() === actualCurrentPass) {
+      alert('⚠️ New password must be different from your current password.');
+      return;
+    }
+
     if (onUpdatePassword) {
-      onUpdatePassword(server.id, newPass);
-      alert(isSelf ? 'Your password has been updated successfully!' : `Password reset successfully for ${server.name}!`);
+      onUpdatePassword(server.id, newPass.trim());
+      alert(isSelf 
+        ? '✅ Your password has been updated successfully! Default password is removed.' 
+        : `✅ Password updated successfully for ${server.name}! Default password replaced.`
+      );
+      setOldPass('');
       setNewPass('');
+      setConfirmPass('');
       setShowEditPass(false);
     }
   };
@@ -744,20 +774,47 @@ const ServerCardItem = React.memo(({
 
       {/* Inline Password Change Form */}
       {showEditPass && (
-        <form onSubmit={handleSavePassword} className="mt-2 p-2 bg-church-900/90 rounded-xl border border-gold-500/40 flex items-center gap-2 animate-fade-in">
-          <input
-            type="text"
-            required
-            placeholder="New password..."
-            value={newPass}
-            onChange={(e) => setNewPass(e.target.value)}
-            className="flex-1 bg-church-950 text-gold-100 text-xs px-2.5 py-1 rounded-lg border border-church-700 focus:outline-none"
-          />
+        <form onSubmit={handleSavePassword} className="mt-2 p-3 bg-church-900/90 rounded-xl border border-gold-500/40 space-y-2 animate-fade-in">
+          {isSelf && (
+            <div>
+              <label className="block text-[9px] text-gold-300 font-mono mb-0.5 uppercase">1. Enter Old / Current Password</label>
+              <input
+                type="password"
+                required
+                placeholder="Current password..."
+                value={oldPass}
+                onChange={(e) => setOldPass(e.target.value)}
+                className="w-full bg-church-950 text-gold-100 text-xs px-2.5 py-1 rounded-lg border border-church-700 focus:outline-none font-mono"
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-[9px] text-gold-300 font-mono mb-0.5 uppercase">{isSelf ? '2. Enter New Password' : '1. Enter New Password'}</label>
+            <input
+              type="password"
+              required
+              placeholder="New password (min 3 chars)..."
+              value={newPass}
+              onChange={(e) => setNewPass(e.target.value)}
+              className="w-full bg-church-950 text-gold-100 text-xs px-2.5 py-1 rounded-lg border border-church-700 focus:outline-none font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-[9px] text-gold-300 font-mono mb-0.5 uppercase">{isSelf ? '3. Confirm New Password' : '2. Confirm New Password'}</label>
+            <input
+              type="password"
+              required
+              placeholder="Confirm new password..."
+              value={confirmPass}
+              onChange={(e) => setConfirmPass(e.target.value)}
+              className="w-full bg-church-950 text-gold-100 text-xs px-2.5 py-1 rounded-lg border border-church-700 focus:outline-none font-mono"
+            />
+          </div>
           <button
             type="submit"
-            className="bg-gold-600 hover:bg-gold-500 text-church-950 font-bold text-[10px] px-2.5 py-1 rounded-lg cursor-pointer shrink-0"
+            className="w-full bg-gold-600 hover:bg-gold-500 text-church-950 font-bold text-xs py-1.5 rounded-lg cursor-pointer transition-colors"
           >
-            Save
+            Update & Save Password
           </button>
         </form>
       )}
