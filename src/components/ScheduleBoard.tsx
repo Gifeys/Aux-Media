@@ -171,7 +171,7 @@ export default function ScheduleBoard({
         const resp = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: JSON.stringify(dispatch.individualDispatches.length > 0 ? dispatch.individualDispatches : {
             from: currentUser.email || 'adrich.glife.abelon@gmail.com',
             to: dispatch.batchEmails.join(','),
             subject: dispatch.subject,

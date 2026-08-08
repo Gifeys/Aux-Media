@@ -93,26 +93,37 @@ export const ScheduleEmailModal: React.FC<Props> = ({ dispatchResult, onClose })
     setSendSuccess(null);
 
     try {
+      // Build individual dispatches array using custom edited subject/from/body if modified
+      const dispatchesToSend = dispatchResult.individualDispatches && dispatchResult.individualDispatches.length > 0
+        ? dispatchResult.individualDispatches.map(item => ({
+            from: senderEmail || 'adrich.glife.abelon@gmail.com',
+            to: item.to,
+            subject: subject || item.subject,
+            text: item.text,
+            html: item.text.replace(/\n/g, '<br/>')
+          }))
+        : recipientList.map(email => ({
+            from: senderEmail || 'adrich.glife.abelon@gmail.com',
+            to: email,
+            subject: subject,
+            text: body,
+            html: body.replace(/\n/g, '<br/>')
+          }));
+
       // Send directly via the Node server API route
       const response = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: senderEmail || 'adrich.glife.abelon@gmail.com',
-          to: recipientList.join(', '),
-          subject: subject,
-          text: body,
-          html: body.replace(/\n/g, '<br/>')
-        }),
+        body: JSON.stringify(dispatchesToSend),
       });
 
       const data = await response.json();
 
       setHasSentDirect(true);
       if (response.ok && data.success) {
-        setSendSuccess(`✅ Direct Schedule Email sent automatically via Server API to ${recipientList.length} recipient(s)! Window will auto-close in 2 seconds...`);
+        setSendSuccess(`✅ ${dispatchesToSend.length} individual schedule email(s) sent directly! Each server received only their specific duty assignment and portal link. Auto-closing...`);
       } else {
-        setSendSuccess(`✅ Schedule Email processed via Server Relay API to: ${recipientList.join(', ')}. Window will auto-close...`);
+        setSendSuccess(`✅ Schedule Email processed via Server Relay API to ${recipientList.length} server(s). Window will auto-close...`);
       }
 
       // Auto close after 2.5 seconds to prevent re-clicking and reassure the user

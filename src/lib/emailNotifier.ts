@@ -8,6 +8,15 @@ export interface AssignedServerEmailNotice {
   }[];
 }
 
+export interface IndividualEmailDispatch {
+  to: string;
+  serverName: string;
+  subject: string;
+  text: string;
+  body: string;
+  html?: string;
+}
+
 export interface ScheduleEmailDispatchResult {
   dayName: string;
   date: string;
@@ -17,6 +26,7 @@ export interface ScheduleEmailDispatchResult {
   subject: string;
   body: string;
   mailtoUrl: string;
+  individualDispatches: IndividualEmailDispatch[];
 }
 
 const ROLE_DISPLAY_NAMES: Record<SocComRole, string> = {
@@ -25,6 +35,49 @@ const ROLE_DISPLAY_NAMES: Record<SocComRole, string> = {
   documentation: 'Photo & Documentation',
   reels_editor: 'Reels & Video Highlights Editor',
 };
+
+export function formatIndividualServerEmailBody(
+  serverName: string,
+  scheduleRow: { dayName: string; date: string; specialService?: string },
+  assignments: { time: string; roles: string[] }[],
+  siteUrl: string,
+  customIntroMessage?: string
+): string {
+  let body = `Greetings ${serverName},\n\n`;
+  body += customIntroMessage 
+    ? `${customIntroMessage}\n\n` 
+    : `Peace be with you! You have been scheduled for liturgical duty at Mary Help of Christians Parish:\n\n`;
+  
+  body += `📅 LITURGY / EVENT: ${scheduleRow.dayName}\n`;
+  body += `📆 DATE: ${scheduleRow.date}\n`;
+  if (scheduleRow.specialService) {
+    body += `✨ SPECIAL EVENT: ${scheduleRow.specialService}\n`;
+  }
+
+  body += `\n========================================\n`;
+  body += `YOUR INDIVIDUAL DUTY ASSIGNMENT:\n`;
+  body += `========================================\n`;
+
+  if (!assignments || assignments.length === 0) {
+    body += `(No specific time slots assigned)\n`;
+  } else {
+    assignments.forEach((a) => {
+      body += `⏰ Mass / Service Time: ${a.time}\n`;
+      body += `🎯 Role(s): ${a.roles.join(', ')}\n\n`;
+    });
+  }
+
+  body += `========================================\n`;
+  body += `Please ensure you arrive at least 15 minutes before your scheduled service time.\n`;
+  body += `If you need a proxy or substitution, please inform the SocCom Executive Team promptly.\n\n`;
+  body += `🌐 VIEW YOUR SCHEDULE ON THE WEBSITE PORTAL:\n`;
+  body += `To view your full master schedule, attendance status, and team roster, please visit:\n${siteUrl}\n\n`;
+  body += `In Christ,\n`;
+  body += `Auxiliadora Media Ministry & SocCom Team\n`;
+  body += `Mary Help of Christians Parish`;
+
+  return body;
+}
 
 /**
  * Extracts assigned servers from a schedule row and formats email dispatch data.
@@ -89,9 +142,24 @@ export function generateScheduleEmailData(
     }
   });
 
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
   const subject = `⛪ [Liturgy Schedule] Assigned Duty: ${scheduleRow.dayName} (${scheduleRow.date})`;
 
-  let body = `Greetings Media Ministry Server,\n\n`;
+  // Generate individual personalized emails for each assigned server
+  const individualDispatches: IndividualEmailDispatch[] = serverNotices.map((notice) => {
+    const textBody = formatIndividualServerEmailBody(notice.server.name, scheduleRow, notice.assignments, siteUrl);
+    const toEmail = notice.server.email || `${notice.server.name.toLowerCase().replace(/\s+/g, '')}@auxiladora.org`;
+    return {
+      to: toEmail,
+      serverName: notice.server.name,
+      subject,
+      text: textBody,
+      body: textBody,
+    };
+  });
+
+  // Default preview template format
+  let body = `Greetings {Server Name},\n\n`;
   body += `Peace be with you! You have been scheduled for liturgical duty at Mary Help of Christians Parish:\n\n`;
   body += `📅 LITURGY / EVENT: ${scheduleRow.dayName}\n`;
   body += `📆 DATE: ${scheduleRow.date}\n`;
@@ -99,23 +167,15 @@ export function generateScheduleEmailData(
     body += `✨ SPECIAL EVENT: ${scheduleRow.specialService}\n`;
   }
   body += `\n========================================\n`;
-  body += `DUTY BREAKDOWN & TIME OF SERVICE:\n`;
+  body += `YOUR ASSIGNED SERVE SCHEDULE & ROLES:\n`;
   body += `========================================\n`;
-
-  serverNotices.forEach((notice) => {
-    body += `\n👤 Server: ${notice.server.name} (${notice.server.email || 'media@auxiladora.org'})\n`;
-    notice.assignments.forEach((a) => {
-      body += `   ⏰ Time of Mass/Service: ${a.time}\n`;
-      body += `   🎯 Role(s): ${a.roles.join(', ')}\n`;
-    });
-  });
-
-  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
-
-  body += `\n========================================\n`;
-  body += `Please ensure you arrive 15 minutes before your scheduled service time.\n`;
+  body += `⏰ Mass / Service Time: [Server Assigned Mass Time]\n`;
+  body += `🎯 Role(s): [Assigned Role, e.g. PPT / Live Stream]\n\n`;
+  body += `========================================\n`;
+  body += `Please ensure you arrive at least 15 minutes before your scheduled service time.\n`;
   body += `If you need a proxy or substitution, please inform the SocCom Executive Team promptly.\n\n`;
-  body += `🌐 AUXILIADORA MEDIA PORTAL WEBSITE:\n${siteUrl}\n\n`;
+  body += `🌐 VIEW YOUR SCHEDULE ON THE WEBSITE PORTAL:\n`;
+  body += `To view your full master schedule, attendance status, and team roster, please visit:\n${siteUrl}\n\n`;
   body += `In Christ,\n`;
   body += `Auxiliadora Media Ministry & SocCom Team\n`;
   body += `Mary Help of Christians Parish`;
@@ -132,5 +192,6 @@ export function generateScheduleEmailData(
     subject,
     body,
     mailtoUrl,
+    individualDispatches,
   };
 }

@@ -1497,7 +1497,7 @@ export default function DashboardView({
                   required
                   value={spotlightName}
                   onChange={(e) => setSpotlightName(e.target.value)}
-                  placeholder="e.g. Jose Rizal"
+                  placeholder="e.g. Server Name"
                   className="w-full bg-[#0b1928] border border-[#46464c] rounded-xl p-2.5 text-amber-100 focus:outline-none focus:border-amber-400 font-serif text-sm"
                 />
               </div>

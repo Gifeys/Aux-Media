@@ -1798,7 +1798,7 @@ export default function AdminPanel({
         const resp = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: JSON.stringify(emailData.individualDispatches.length > 0 ? emailData.individualDispatches : {
             from: currentUser?.email || 'adrich.glife.abelon@gmail.com',
             to: emailData.batchEmails.join(','),
             subject: emailData.subject,
@@ -1967,7 +1967,7 @@ export default function AdminPanel({
         const resp = await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: JSON.stringify(emailData.individualDispatches.length > 0 ? emailData.individualDispatches : {
             from: currentUser?.email || 'adrich.glife.abelon@gmail.com',
             to: emailData.batchEmails.join(','),
             subject: emailData.subject,

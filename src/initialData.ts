@@ -250,11 +250,11 @@ export const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
 ];
 
 export const DEFAULT_SOCOM_OF_THE_MONTH: SocComOfTheMonth = {
-  id: 'server-reels-1',
-  name: 'Jose Rizal',
-  role: 'Reels Editor & Lead Video Director',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=300&q=80',
-  description: 'Jose has gone above and beyond this month by creating beautiful, engaging Reels for our parish fiesta preparation, capturing breathtaking photography of the parish grounds, and keeping the PPT slides pristine.',
+  id: 'admin-1',
+  name: 'Adrich Glife Abelon',
+  role: 'Lead Media Admin & Live Stream Director',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  description: 'Recognized for exceptional leadership, live streaming excellence, and ongoing dedication to the Auxiliadora Media Ministry.',
   workImages: [
     'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=400&q=80', // Live production
     'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=400&q=80', // Photography

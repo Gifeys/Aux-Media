@@ -89,20 +89,19 @@ export default function NotesView({
 
   // Filter Notes logically:
   // - Public notes are visible to everyone
-  // - Private notes are only visible to their author (currentUser.id) or Admin
+  // - Private notes are strictly visible ONLY to their author (currentUser.id or authorName match)
   const visibleNotes = useMemo(() => {
     return notes.filter((n) => {
-      // Security check: Private notes are strictly visible to author or Admin/Sub-Admin
-      const isOwner = n.authorId === currentUser.id;
-      const isAdminUser = currentUser.isAdmin || currentUser.isSubAdmin;
-      if (!n.isPublic && !isOwner && !isAdminUser) {
+      // Security check: Private notes are strictly visible ONLY to author for privacy
+      const isOwner = n.authorId === currentUser.id || (n.authorName && n.authorName.toLowerCase().trim() === currentUser.name?.toLowerCase().trim());
+      if (!n.isPublic && !isOwner) {
         return false;
       }
 
       // Filter by tab:
       if (activeFilter === 'public' && !n.isPublic) return false;
       if (activeFilter === 'private' && n.isPublic) return false;
-      if (activeFilter === 'my_notes' && n.authorId !== currentUser.id) return false;
+      if (activeFilter === 'my_notes' && !isOwner) return false;
 
       // Filter by category:
       if (categoryFilter !== 'all' && n.category !== categoryFilter) return false;
@@ -122,8 +121,8 @@ export default function NotesView({
 
   // Counts for tab badges
   const publicCount = useMemo(() => notes.filter(n => n.isPublic).length, [notes]);
-  const privateCount = useMemo(() => notes.filter(n => !n.isPublic && (n.authorId === currentUser.id || currentUser.isAdmin || currentUser.isSubAdmin)).length, [notes, currentUser]);
-  const myNotesCount = useMemo(() => notes.filter(n => n.authorId === currentUser.id).length, [notes, currentUser]);
+  const privateCount = useMemo(() => notes.filter(n => !n.isPublic && (n.authorId === currentUser.id || (n.authorName && n.authorName.toLowerCase().trim() === currentUser.name?.toLowerCase().trim()))).length, [notes, currentUser]);
+  const myNotesCount = useMemo(() => notes.filter(n => n.authorId === currentUser.id || (n.authorName && n.authorName.toLowerCase().trim() === currentUser.name?.toLowerCase().trim())).length, [notes, currentUser]);
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
@@ -148,7 +147,7 @@ export default function NotesView({
           className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-church-950 font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2 cursor-pointer transition-all shrink-0 hover:scale-[1.02]"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Create New Note</span>
+          <span>Create New Note</span>
         </button>
       </div>
 

@@ -34,7 +34,66 @@ app.get('/api/send-email', (req, res) => {
 
 app.post('/api/send-email', async (req, res) => {
   try {
-    const { to, subject, text, html, from } = req.body || {};
+    const payload = req.body;
+
+    if (Array.isArray(payload)) {
+      if (payload.length === 0) {
+        return res.status(400).json({ error: 'Empty email payload array' });
+      }
+
+      const smtpUser = process.env.SMTP_USER || 'glifebautista@gmail.com';
+      const rawSmtpPass = process.env.SMTP_PASS || '';
+      const cleanSmtpPass = rawSmtpPass.replace(/\s+/g, '');
+
+      let sentCount = 0;
+      let transporter: any = null;
+
+      if (cleanSmtpPass) {
+        transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          auth: {
+            user: smtpUser,
+            pass: cleanSmtpPass,
+          },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+        });
+      }
+
+      for (const item of payload) {
+        const { to, subject, text, html, from } = item || {};
+        if (!to || !subject || !text) continue;
+
+        const senderEmail = from || process.env.SMTP_USER || 'adrich.glife.abelon@gmail.com';
+        const senderDisplay = `Adrich Glife Abelon (Auxiliadora Media Admin) <${senderEmail}>`;
+
+        if (transporter) {
+          await transporter.sendMail({
+            from: senderDisplay,
+            to,
+            subject,
+            text,
+            html: html || text.replace(/\n/g, '<br/>'),
+          }).catch((err: any) => console.error(`[EMAIL DISPATCH FAIL] ${to}:`, err));
+          sentCount++;
+        } else {
+          console.log(`[SIMULATED INDIVIDUAL EMAIL] to ${to}: ${subject}`);
+          sentCount++;
+        }
+      }
+
+      return res.json({
+        success: true,
+        count: sentCount,
+        message: `Dispatched ${sentCount} individual personalized schedule emails.`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const { to, subject, text, html, from } = payload || {};
 
     if (!to || !subject || !text) {
       return res.status(400).json({ 

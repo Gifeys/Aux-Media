@@ -34,7 +34,15 @@ export default function App() {
   const [subRequests, setSubRequests] = useState<SubstitutionRequest[]>([]);
   const [receipts, setReceipts] = useState<ServiceReceipt[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [soccomOfMonth, setSoccomOfMonth] = useState<SocComOfTheMonth>(DEFAULT_SOCOM_OF_THE_MONTH);
+  const [soccomOfMonth, setSoccomOfMonth] = useState<SocComOfTheMonth>(() => {
+    try {
+      const saved = localStorage.getItem('aux_soccom_of_the_month');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return DEFAULT_SOCOM_OF_THE_MONTH;
+  });
   const [applicants, setApplicants] = useState<Applicant[]>(() => {
     try {
       const saved = localStorage.getItem('aux_applicants');
@@ -43,7 +51,15 @@ export default function App() {
       return [];
     }
   });
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
+    try {
+      const saved = localStorage.getItem('aux_site_settings');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return DEFAULT_SITE_SETTINGS;
+  });
   const [notes, setNotes] = useState<ServerNote[]>([]);
   const [auditRecords, setAuditRecords] = useState<ScheduleAuditRecord[]>([]);
   const [subAdminAlerts, setSubAdminAlerts] = useState<SubAdminAttendanceAlert[]>([]);
@@ -804,10 +820,16 @@ export default function App() {
   };
 
   const handleUpdateSiteSettings = (updated: Partial<SiteSettings>) => {
-    setSiteSettings(prev => ({
-      ...prev,
-      ...updated
-    }));
+    setSiteSettings(prev => {
+      const merged = { ...prev, ...updated };
+      setDoc(doc(db, 'settings', 'site_settings'), merged).catch((err) => handleFirestoreError(err, OperationType.WRITE, 'settings/site_settings'));
+      try {
+        localStorage.setItem('aux_site_settings', JSON.stringify(merged));
+      } catch (e) {
+        console.warn('LocalStorage write error:', e);
+      }
+      return merged;
+    });
   };
 
   const handleRestoreDefaults = () => {
