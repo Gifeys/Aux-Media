@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Server, ScheduleRow, SubstitutionRequest, ServiceReceipt, SocComRole, ScheduleAuditRecord } from '../types';
 import { formatBirthdayForDisplay, formatBirthdayForInput } from '../lib/birthdayUtils';
 import { compressImage } from '../lib/imageUtils';
-import { isSlotFinished } from '../lib/scheduleAudit';
+import { isSlotFinished, isPastTenPmCutoff } from '../lib/scheduleAudit';
 import { 
   User, 
   Upload, 
@@ -675,7 +675,11 @@ export default function MyWorkspace({
                               ) : (
                                 <>
                                   <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                                  <span>🔴 Service Finished • Please Submit Reflection Below to clear sub-admin alert!</span>
+                                  <span>
+                                    {isPastTenPmCutoff(row.date)
+                                      ? '⏰ 10:00 PM Cutoff Reached • Please submit reflection below to clear your attendance status!'
+                                      : '🔴 Service Finished • Please Submit Reflection Below to clear sub-admin alert!'}
+                                  </span>
                                 </>
                               )}
                             </div>

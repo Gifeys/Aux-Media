@@ -281,6 +281,10 @@ export default function App() {
 
   useEffect(() => {
     handleRunScheduleAudit();
+    const interval = setInterval(() => {
+      handleRunScheduleAudit();
+    }, 30000); // Audit check every 30 seconds
+    return () => clearInterval(interval);
   }, [schedules, servers, receipts, subRequests]);
 
   const handleUpdateAuditStatus = (auditId: string, newStatus: AttendanceAuditStatus, notesText?: string) => {

@@ -16,13 +16,25 @@ export function isSlotFinished(dateStr: string, timeStr: string): boolean {
 
   const now = new Date();
   
+  let year = now.getFullYear();
+  let month = now.getMonth();
+  let day = now.getDate();
+
   // Format YYYY-MM-DD
   const dateParts = dateStr.split('-');
-  if (dateParts.length !== 3) return false;
-  
-  const year = parseInt(dateParts[0], 10);
-  const month = parseInt(dateParts[1], 10) - 1;
-  const day = parseInt(dateParts[2], 10);
+  if (dateParts.length === 3) {
+    year = parseInt(dateParts[0], 10);
+    month = parseInt(dateParts[1], 10) - 1;
+    day = parseInt(dateParts[2], 10);
+  } else {
+    const parsed = Date.parse(dateStr);
+    if (!isNaN(parsed)) {
+      const d = new Date(parsed);
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
+    }
+  }
 
   // Extract time e.g. "Sat 6:00 PM" -> "6:00 PM" or "6:00 AM"
   let hours = 12;
@@ -42,6 +54,32 @@ export function isSlotFinished(dateStr: string, timeStr: string): boolean {
   const slotEndTime = new Date(slotStartTime.getTime() + 90 * 60 * 1000);
 
   return now.getTime() >= slotEndTime.getTime();
+}
+
+/**
+ * Checks if current time is past 10:00 PM on the service date or on a subsequent date.
+ */
+export function isPastTenPmCutoff(dateStr: string): boolean {
+  if (!dateStr) return false;
+  const now = new Date();
+  
+  let targetDate: Date | null = null;
+  const dateParts = dateStr.split('-');
+  if (dateParts.length === 3) {
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+    targetDate = new Date(year, month, day, 22, 0, 0); // 10:00 PM cutoff on service day
+  } else {
+    const parsed = Date.parse(dateStr);
+    if (!isNaN(parsed)) {
+      const d = new Date(parsed);
+      targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 22, 0, 0);
+    }
+  }
+
+  if (!targetDate) return false;
+  return now.getTime() >= targetDate.getTime();
 }
 
 /**

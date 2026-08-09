@@ -2937,7 +2937,7 @@ export default function AdminPanel({
           <div className="p-3.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs font-serif text-amber-200/90 flex items-start gap-2.5 shadow-sm">
             <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-amber-300">Assignment Accountability Policy:</span> Attendance tracking and reflection submissions apply <strong>strictly to servers explicitly selected and assigned</strong> to published liturgy schedules (e.g. <em>Nineteenth Sunday in Ordinary Time</em>). Unassigned members remain in active standing as <strong>Off Duty / Not Scheduled</strong> and are not marked absent.
+              <span className="font-bold text-amber-300">Assignment Accountability & 10:00 PM Daily Cutoff Policy:</span> Attendance tracking applies <strong>strictly to servers explicitly selected and assigned</strong> to published liturgy schedules (e.g. <em>Nineteenth Sunday in Ordinary Time</em>). At <strong>10:00 PM on service day</strong>, assigned servers without a reflection receipt are automatically flagged as missing attendance, triggering 1-click email reminders. Unassigned members remain <strong>Off Duty / Not Scheduled</strong>.
             </div>
           </div>
 
