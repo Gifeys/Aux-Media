@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { SocComOfTheMonth, Announcement, Server } from '../types';
-import { Sparkles, Cake, BookOpen, AlertCircle, Plus, Trash2, Edit3, X, Check, UserCheck, Upload, Image } from 'lucide-react';
+import { Sparkles, Cake, BookOpen, AlertCircle, Plus, Trash2, Edit3, X, Check, UserCheck, Upload, Image, Mail } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 
 interface CommunityHubProps {
@@ -164,6 +164,11 @@ export default function CommunityHub({
   const [imageUrl, setImageUrl] = useState('');
   const [isCompressingNew, setIsCompressingNew] = useState(false);
 
+  // Email notification settings for announcements
+  const [sendEmailNotice, setSendEmailNotice] = useState(true);
+  const [emailAudience, setEmailAudience] = useState<'all' | 'pick'>('all');
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState<string[]>([]);
+
   // State for editing an existing announcement
   const [editingAnn, setEditingAnn] = useState<Announcement | null>(null);
   const [editAnnTitle, setEditAnnTitle] = useState('');
@@ -285,19 +290,44 @@ export default function CommunityHub({
     e.preventDefault();
     if (!title || !content) return;
 
-    onAddAnnouncement({
+    const newAnn: Announcement = {
       id: `ann-${Date.now()}`,
       title,
       content,
       type,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       imageUrl: imageUrl || undefined
-    });
+    };
+
+    onAddAnnouncement(newAnn);
+
+    if (sendEmailNotice) {
+      const recipientServers = emailAudience === 'all'
+        ? servers
+        : servers.filter(s => selectedRecipientIds.includes(s.id));
+
+      const recipientEmails = Array.from(new Set(
+        recipientServers.map(s => s.email || `${s.name.toLowerCase().replace(/\s+/g, '')}@auxiladora.org`).filter(Boolean)
+      ));
+
+      if (recipientEmails.length > 0) {
+        const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
+        const teaser = content.length > 150 ? `${content.substring(0, 150)}...` : content;
+        const mailSubject = `📢 [Auxiliadora Announcement] ${title}`;
+        const mailBody = `📢 AUXILIADORA ANNOUNCEMENT: ${title}\n\n${teaser}\n\n========================================\n🌐 OPEN THE PORTAL TO VIEW FULL DETAILS:\n${siteUrl}\n========================================\n\nIn Christ,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
+
+        const mailtoUrl = `mailto:${recipientEmails.join(',')}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`;
+        window.open(mailtoUrl, '_blank');
+      }
+    }
 
     setTitle('');
     setContent('');
     setImageUrl('');
     setType('reminder');
+    setSendEmailNotice(true);
+    setEmailAudience('all');
+    setSelectedRecipientIds([]);
     setShowAddForm(false);
   };
 
@@ -436,6 +466,88 @@ export default function CommunityHub({
                     onChange={(e) => setContent(e.target.value)}
                     className="bg-church-900 text-gold-100 text-xs rounded-lg p-2.5 border border-church-700/60 focus:outline-none focus:ring-1 focus:ring-gold-400 resize-none font-sans"
                   />
+                </div>
+
+                {/* Email Dispatch Options */}
+                <div className="p-3 bg-church-900/80 border border-gold-500/30 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gold-200 flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={sendEmailNotice}
+                        onChange={(e) => setSendEmailNotice(e.target.checked)}
+                        className="w-4 h-4 accent-gold-500 rounded cursor-pointer"
+                      />
+                      <Mail className="w-3.5 h-3.5 text-gold-400" />
+                      <span>Send Email Notification to Members</span>
+                    </label>
+                    <span className="text-[10px] text-gold-400/70 font-mono">Default Teaser + Portal Link</span>
+                  </div>
+
+                  {sendEmailNotice && (
+                    <div className="pl-5 space-y-2 pt-1 border-t border-church-750 font-mono text-xs">
+                      <div className="flex items-center gap-4 text-gold-300">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="emailAudience"
+                            value="all"
+                            checked={emailAudience === 'all'}
+                            onChange={() => setEmailAudience('all')}
+                            className="accent-gold-500 cursor-pointer"
+                          />
+                          <span>Send to All Active Members ({servers.length})</span>
+                        </label>
+
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="emailAudience"
+                            value="pick"
+                            checked={emailAudience === 'pick'}
+                            onChange={() => setEmailAudience('pick')}
+                            className="accent-gold-500 cursor-pointer"
+                          />
+                          <span>Pick Specific Members</span>
+                        </label>
+                      </div>
+
+                      {emailAudience === 'pick' && (
+                        <div className="p-2.5 bg-church-950 rounded-lg border border-church-700 space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                          <p className="text-[10px] text-gold-400 font-bold uppercase">Select Recipient Members:</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+                            {servers.map((s) => {
+                              const isChecked = selectedRecipientIds.includes(s.id);
+                              return (
+                                <label
+                                  key={s.id}
+                                  className={`flex items-center gap-1.5 p-1 rounded border cursor-pointer transition-colors ${
+                                    isChecked
+                                      ? 'bg-gold-500/20 text-gold-100 border-gold-500/40'
+                                      : 'bg-church-900 text-gold-300/80 border-church-800 hover:border-church-700'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedRecipientIds(prev => [...prev, s.id]);
+                                      } else {
+                                        setSelectedRecipientIds(prev => prev.filter(id => id !== s.id));
+                                      }
+                                    }}
+                                    className="w-3 h-3 accent-gold-500 rounded cursor-pointer"
+                                  />
+                                  <span className="truncate">{s.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Optional Photo Attachment */}

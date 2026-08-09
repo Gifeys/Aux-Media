@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ScheduleRow, Server, SocComRole, ScheduleSlot, ScheduleAuditRecord, SubAdminAttendanceAlert, Announcement } from '../types';
-import { Search, Calendar, Award, Info, BookOpen, Plus, Radio, Check, Trash2, Edit3, X, UserCheck, Mail, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
+import { ScheduleRow, Server, SocComRole, ScheduleSlot, ScheduleAuditRecord, SubAdminAttendanceAlert, Announcement, ServiceReceipt } from '../types';
+import { Search, Calendar, Award, Info, BookOpen, Plus, Radio, Check, Trash2, Edit3, X, UserCheck, Mail, CheckCircle2, AlertCircle, ShieldAlert, BookOpenText } from 'lucide-react';
 import { generateScheduleEmailData, ScheduleEmailDispatchResult } from '../lib/emailNotifier';
 import { ScheduleEmailModal } from './ScheduleEmailModal';
 import { isSlotFinished } from '../lib/scheduleAudit';
@@ -23,6 +23,7 @@ interface ScheduleBoardProps {
   auditRecords?: ScheduleAuditRecord[];
   subAdminAlerts?: SubAdminAttendanceAlert[];
   onOpenSubAdminAudit?: () => void;
+  onSubmitReceipt?: (receiptData: Omit<ServiceReceipt, 'id' | 'timestamp'>) => void;
 }
 
 
@@ -127,10 +128,22 @@ export default function ScheduleBoard({
   onOpenSwapModal,
   auditRecords = [],
   subAdminAlerts = [],
-  onOpenSubAdminAudit
+  onOpenSubAdminAudit,
+  onSubmitReceipt
 }: ScheduleBoardProps) {
 
   const isAdmin = Boolean(currentUser.isAdmin || currentUser.isSubAdmin);
+
+  // Reflection submission modal state
+  const [reflectionModalData, setReflectionModalData] = useState<{
+    date: string;
+    time: string;
+    dayName: string;
+    serverId: string;
+    serverName: string;
+    role: SocComRole;
+  } | null>(null);
+  const [reflectionInputText, setReflectionInputText] = useState<string>('');
 
   // Separate schedules into regular and special
   const regularSchedules = useMemo(() => schedules.filter(s => !s.isSpecial), [schedules]);
@@ -337,7 +350,7 @@ export default function ScheduleBoard({
 
               {/* Status Indicator Badge for Finished Mass Services */}
               {slotFinished && (
-                <div className="text-[10px] font-mono font-bold pt-0.5">
+                <div className="text-[10px] font-mono font-bold pt-0.5 space-y-1">
                   {auditRec?.status === 'attended' && (
                     <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30">
                       🟢 Attended & Reflected
@@ -362,6 +375,30 @@ export default function ScheduleBoard({
                     <span className="inline-flex items-center gap-1 text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
                       ⌛ Service Concluded
                     </span>
+                  )}
+
+                  {/* Reflection Submission Action Button - Only the assigned server can submit their own reflection */}
+                  {currentUser.id === server.id && auditRec?.status !== 'attended' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReflectionModalData({
+                          date: scheduleRowDate || '',
+                          time: slotTime,
+                          dayName: dayName || 'Liturgical Mass Service',
+                          serverId: server.id,
+                          serverName: server.name,
+                          role: role
+                        });
+                        setReflectionInputText('');
+                      }}
+                      className="mt-1 text-[10px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 font-bold px-2 py-1 rounded flex items-center gap-1 transition-all cursor-pointer w-full justify-center shadow-sm"
+                      title="Submit spiritual reflection & record attendance"
+                    >
+                      <BookOpen className="w-3 h-3 text-amber-400" />
+                      <span>✍️ Add Reflection</span>
+                    </button>
                   )}
                 </div>
               )}
@@ -1092,6 +1129,80 @@ export default function ScheduleBoard({
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reflection & Attendance Submission Modal */}
+      {reflectionModalData && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-[#0c1a29] border border-amber-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-amber-400" />
+                <h3 className="font-serif text-lg font-bold text-[#d4e4fa]">Submit Reflection & Confirm Attendance</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReflectionModalData(null)}
+                className="text-[#909096] hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-[#08121e] rounded-xl border border-white/10 text-xs space-y-1">
+              <p className="font-bold text-amber-200 text-sm">{reflectionModalData.serverName}</p>
+              <p className="text-amber-400/80 font-mono text-[11px] font-semibold">{reflectionModalData.dayName} • {reflectionModalData.date} @ {reflectionModalData.time}</p>
+              <p className="text-[#909096] uppercase text-[10px] font-mono font-bold pt-0.5">Assigned Role: {reflectionModalData.role.replace('_', ' ').toUpperCase()}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-amber-100 flex items-center justify-between">
+                <span>Spiritual Service Reflection:</span>
+                <span className="text-[10px] font-mono text-amber-400/70 font-normal">Records attendance automatically</span>
+              </label>
+              <textarea
+                rows={4}
+                value={reflectionInputText}
+                onChange={(e) => setReflectionInputText(e.target.value)}
+                placeholder="Share your personal reflection on today's Mass service (e.g. homily insights, technical production stewardship, guiding the parish to prayer)..."
+                className="w-full bg-[#08121e] border border-[#46464c] rounded-xl p-3 text-xs text-amber-100 focus:outline-none focus:border-amber-400 font-serif leading-relaxed"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setReflectionModalData(null)}
+                className="px-4 py-2 text-xs font-bold text-[#909096] hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!reflectionInputText.trim()}
+                onClick={() => {
+                  if (onSubmitReceipt && reflectionInputText.trim()) {
+                    onSubmitReceipt({
+                      date: reflectionModalData.date,
+                      time: reflectionModalData.time,
+                      dayName: reflectionModalData.dayName,
+                      serverId: reflectionModalData.serverId,
+                      serverName: reflectionModalData.serverName,
+                      role: reflectionModalData.role,
+                      reflection: reflectionInputText.trim()
+                    });
+                    setReflectionModalData(null);
+                    setReflectionInputText('');
+                  }
+                }}
+                className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-church-950 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Confirm Attendance & Submit</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

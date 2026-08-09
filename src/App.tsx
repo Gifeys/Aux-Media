@@ -937,6 +937,15 @@ export default function App() {
               auditRecords={auditRecords}
               subAdminAlerts={subAdminAlerts}
               onOpenSubAdminAudit={() => setShowSubAdminAuditModal(true)}
+              onSubmitReceipt={(receiptData) => {
+                const newReceipt: ServiceReceipt = {
+                  ...receiptData,
+                  id: `receipt-${Date.now()}`,
+                  timestamp: new Date().toISOString()
+                };
+                setReceipts(prev => [newReceipt, ...prev]);
+                setDoc(doc(db, 'receipts', newReceipt.id), newReceipt).catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
+              }}
             />
           )}
 
@@ -1023,6 +1032,17 @@ export default function App() {
               subAdminAlerts={subAdminAlerts}
               auditRecords={auditRecords}
               onOpenSubAdminAudit={() => setShowSubAdminAuditModal(true)}
+              onUpdateAuditStatus={handleUpdateAuditStatus}
+              onRunAuditNow={handleRunScheduleAudit}
+              onSubmitReceipt={(receiptData) => {
+                const newReceipt: ServiceReceipt = {
+                  ...receiptData,
+                  id: `receipt-${Date.now()}`,
+                  timestamp: new Date().toISOString()
+                };
+                setReceipts(prev => [newReceipt, ...prev]);
+                setDoc(doc(db, 'receipts', newReceipt.id), newReceipt).catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
+              }}
             />
           )}
         </main>

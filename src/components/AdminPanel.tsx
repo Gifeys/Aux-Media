@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Server, ScheduleRow, ScheduleSlot, ServiceReceipt, SocComRole, Announcement, SocComOfTheMonth, Applicant, SiteSettings, SubAdminAttendanceAlert, ScheduleAuditRecord, ActiveSession } from '../types';
+import { Server, ScheduleRow, ScheduleSlot, ServiceReceipt, SocComRole, Announcement, SocComOfTheMonth, Applicant, SiteSettings, SubAdminAttendanceAlert, ScheduleAuditRecord, ActiveSession, AttendanceAuditStatus } from '../types';
 import { formatBirthdayForDisplay, formatBirthdayForInput } from '../lib/birthdayUtils';
 import { compressImage } from '../lib/imageUtils';
 import { generateScheduleEmailData, ScheduleEmailDispatchResult } from '../lib/emailNotifier';
@@ -42,7 +42,15 @@ import {
   Shield,
   FileText,
   Settings,
-  Loader2
+  Loader2,
+  UserX,
+  AlertTriangle,
+  ArrowRightLeft,
+  BookOpen,
+  ShieldAlert,
+  Copy,
+  ExternalLink,
+  Send
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -55,6 +63,9 @@ interface AdminPanelProps {
   subAdminAlerts?: SubAdminAttendanceAlert[];
   auditRecords?: ScheduleAuditRecord[];
   onOpenSubAdminAudit?: () => void;
+  onUpdateAuditStatus?: (auditId: string, newStatus: AttendanceAuditStatus, notes?: string) => void;
+  onRunAuditNow?: () => void;
+  onSubmitReceipt?: (receiptData: Omit<ServiceReceipt, 'id' | 'timestamp'>) => void;
   onAddSchedule: (row: ScheduleRow) => void;
   onUpdateSchedule: (row: ScheduleRow) => void;
   onDeleteSchedule: (id: string) => void;
@@ -213,6 +224,9 @@ const DeleteIconButton = ({ onDelete, title, className }: { onDelete: () => void
 const ServerCardItem = React.memo(({
   server,
   currentUser,
+  schedules = [],
+  receipts = [],
+  auditRecords = [],
   onDelete,
   onAddAnnouncement,
   onUpdatePassword,
@@ -220,6 +234,9 @@ const ServerCardItem = React.memo(({
 }: {
   server: Server;
   currentUser?: Server;
+  schedules?: ScheduleRow[];
+  receipts?: ServiceReceipt[];
+  auditRecords?: ScheduleAuditRecord[];
   onDelete?: (id: string) => void;
   onAddAnnouncement?: (ann: Announcement) => void;
   onUpdatePassword?: (serverId: string, newPass: string) => void;
@@ -240,6 +257,29 @@ const ServerCardItem = React.memo(({
   const [revealPass, setRevealPass] = useState(false);
 
   const isSelf = Boolean(currentUser && currentUser.id === server.id);
+
+  const memberReceipts = useMemo(() => receipts.filter(r => r.serverId === server.id), [receipts, server.id]);
+  
+  // Calculate audit records ONLY for schedules where this server is actually assigned
+  const memberAudits = useMemo(() => {
+    if (!schedules || schedules.length === 0) return [];
+    const schedMap = new Map((schedules || []).map(s => [s.id, s]));
+    return auditRecords.filter((rec) => {
+      if (rec.serverId !== server.id) return false;
+      const sched = schedMap.get(rec.scheduleRowId);
+      if (!sched) return false;
+      const slot = sched.slots.find(s => s.id === rec.slotId || s.time === rec.time);
+      if (!slot) return false;
+      const assigned = slot[rec.role];
+      if (Array.isArray(assigned)) {
+        return assigned.includes(server.id);
+      }
+      return assigned === server.id;
+    });
+  }, [auditRecords, server.id, schedules]);
+
+  const attendedCount = memberReceipts.length;
+  const pendingCount = memberAudits.filter(a => a.status === 'unresponsive_absent' && !a.reflectionSubmitted).length;
 
   const handleSaveBirthday = (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,6 +480,28 @@ const ServerCardItem = React.memo(({
                   ⚡ {skill}
                 </span>
               ))}
+            </div>
+
+            {/* Attendance & Reflection Status Badges */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-1 font-mono text-[10px]">
+              {memberAudits.length === 0 ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-church-900 text-gold-200/60 border border-church-750 font-medium">
+                  No Scheduled Serves
+                </span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-bold">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span>{attendedCount} Attended & Reflected</span>
+                  </span>
+                  {pendingCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60 font-bold">
+                      <UserX className="w-3 h-3 text-red-400" />
+                      <span>{pendingCount} Missing Reflection</span>
+                    </span>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -824,8 +886,11 @@ const ServerCardItem = React.memo(({
 
 const ActiveMediaDirectory = React.memo(({
   servers,
+  schedules = [],
   applicants = [],
   currentUser,
+  receipts = [],
+  auditRecords = [],
   onDeleteServer,
   onAddAnnouncement,
   onApproveApplicant,
@@ -835,8 +900,11 @@ const ActiveMediaDirectory = React.memo(({
   onUpdateServer
 }: {
   servers: Server[];
+  schedules?: ScheduleRow[];
   applicants?: Applicant[];
   currentUser?: Server;
+  receipts?: ServiceReceipt[];
+  auditRecords?: ScheduleAuditRecord[];
   onDeleteServer?: (id: string) => void;
   onAddAnnouncement?: (ann: Announcement) => void;
   onApproveApplicant?: (applicant: Applicant) => void;
@@ -1460,6 +1528,9 @@ const ActiveMediaDirectory = React.memo(({
                 key={s.id}
                 server={s}
                 currentUser={currentUser}
+                schedules={schedules}
+                receipts={receipts}
+                auditRecords={auditRecords}
                 onDelete={onDeleteServer}
                 onAddAnnouncement={onAddAnnouncement}
                 onUpdatePassword={onUpdatePassword}
@@ -1484,6 +1555,12 @@ export default function AdminPanel({
   soccomOfMonth,
   applicants = [],
   siteSettings,
+  subAdminAlerts = [],
+  auditRecords = [],
+  onOpenSubAdminAudit,
+  onUpdateAuditStatus,
+  onRunAuditNow,
+  onSubmitReceipt,
   onAddSchedule,
   onUpdateSchedule,
   onDeleteSchedule,
@@ -1506,7 +1583,121 @@ export default function AdminPanel({
     return (applicants || []).filter(a => a.status === 'pending' || a.status === 'under_review').length;
   }, [applicants]);
 
-  const [adminTab, setAdminTab] = useState<'requests' | 'scheduling' | 'members' | 'receipts' | 'branding'>('requests');
+  const [adminTab, setAdminTab] = useState<'requests' | 'scheduling' | 'members' | 'attendance' | 'receipts' | 'branding'>('requests');
+
+  // Attendance tab filter & reflection submission states
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'attended' | 'unresponsive'>('all');
+  const [scheduleTitleFilter, setScheduleTitleFilter] = useState<string>('all');
+  const [attendanceSearch, setAttendanceSearch] = useState<string>('');
+  const [adminReflectionTarget, setAdminReflectionTarget] = useState<{
+    date: string;
+    time: string;
+    dayName: string;
+    serverId: string;
+    serverName: string;
+    role: SocComRole;
+  } | null>(null);
+  const [adminReflectionText, setAdminReflectionText] = useState<string>('');
+
+  // Interactive Email Reminder Modal State
+  const [reminderModal, setReminderModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    emails: string[];
+    subject: string;
+    body: string;
+    copiedEmails?: boolean;
+    copiedBody?: boolean;
+  } | null>(null);
+
+  const serverMap = useMemo(() => {
+    const map: Record<string, Server> = {};
+    servers.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [servers]);
+
+  // Ensure only assigned servers in active/published schedules appear in attendance audit
+  const validAuditRecords = useMemo(() => {
+    const schedMap = new Map((schedules || []).map(s => [s.id, s]));
+    return auditRecords.filter((rec) => {
+      const sched = schedMap.get(rec.scheduleRowId);
+      if (!sched) return false; // schedule deleted or unpublished
+      const slot = sched.slots.find(s => s.id === rec.slotId || s.time === rec.time);
+      if (!slot) return false; // slot no longer exists
+      const assigned = slot[rec.role];
+      if (Array.isArray(assigned)) {
+        return assigned.includes(rec.serverId);
+      }
+      return assigned === rec.serverId;
+    });
+  }, [auditRecords, schedules]);
+
+  const uniqueScheduleTitles = useMemo(() => {
+    return Array.from(new Set(validAuditRecords.map(r => r.dayName))).filter(Boolean);
+  }, [validAuditRecords]);
+
+  const filteredAuditRecords = useMemo(() => {
+    return validAuditRecords.filter(a => {
+      const matchesFilter = 
+        attendanceFilter === 'all' ? true :
+        attendanceFilter === 'attended' ? a.status === 'attended' :
+        a.status === 'unresponsive_absent';
+
+      const matchesSchedule = scheduleTitleFilter === 'all' || a.dayName === scheduleTitleFilter;
+
+      const q = attendanceSearch.toLowerCase().trim();
+      const matchesSearch = !q || 
+        a.serverName.toLowerCase().includes(q) || 
+        a.role.toLowerCase().includes(q) ||
+        a.dayName.toLowerCase().includes(q) ||
+        a.date.includes(q);
+
+      return matchesFilter && matchesSchedule && matchesSearch;
+    });
+  }, [validAuditRecords, attendanceFilter, scheduleTitleFilter, attendanceSearch]);
+
+  // In-app Email Reminder Modal dispatch for unresponsive/missing reflection servers
+  const handleRemindAllUnresponsive = () => {
+    const unresponsiveAudits = validAuditRecords.filter(a => a.status === 'unresponsive_absent');
+    const emails = Array.from(new Set(unresponsiveAudits.map(a => a.serverEmail || serverMap[a.serverId]?.email).filter(Boolean)));
+
+    if (emails.length === 0) {
+      alert('🟢 All scheduled servers have submitted their reflections or attended!');
+      return;
+    }
+
+    const names = Array.from(new Set(unresponsiveAudits.map(a => a.serverName))).join(', ');
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
+    const subject = `⚠️ Action Required: Submit Service Reflection - Auxiliadora Media Ministry`;
+    const body = `Peace be with you!\n\nOur records show that you were scheduled for liturgical service at Auxiliadora Media Ministry but have not yet submitted your post-mass spiritual reflection.\n\nPlease open the website portal to view your assigned duties and submit your reflection:\n${siteUrl}\n\nIn Christ,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
+
+    setReminderModal({
+      isOpen: true,
+      title: `Remind ${unresponsiveAudits.length} Server(s) with Missing Reflections`,
+      emails,
+      subject,
+      body,
+      copiedEmails: false,
+      copiedBody: false
+    });
+  };
+
+  const handleOpenSingleReminder = (record: ScheduleAuditRecord) => {
+    const email = record.serverEmail || serverMap[record.serverId]?.email || '';
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
+    const subject = `⚠️ Attendance & Reflection Reminder: ${record.dayName} Mass - Auxiliadora Media Ministry`;
+    const body = `Dear ${record.serverName},\n\nOur records show that you were selected and assigned for liturgical service at Auxiliadora Media Ministry for the ${record.dayName} Mass on ${record.date} at ${record.time} as ${record.role.replace('_', ' ').toUpperCase()}.\n\nPlease log in to the Auxiliadora Media Portal to submit your post-mass spiritual service reflection or contact your Sub-Admin if you experienced an emergency.\n\nPortal URL:\n${siteUrl}\n\nWarm regards,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
+
+    setReminderModal({
+      isOpen: true,
+      title: `Remind ${record.serverName} (${record.dayName})`,
+      emails: email ? [email] : [],
+      subject,
+      body,
+      copiedEmails: false,
+      copiedBody: false
+    });
+  };
 
   useEffect(() => {
     if (pendingApplicantsCount > 0) {
@@ -1832,15 +2023,6 @@ export default function AdminPanel({
     setShowSpecialServeModal(false);
     alert('Special Serve schedule published! Email sent and announcement created in portal! ⛪');
   };
-
-  // Mapping of Server ID to Server details
-  const serverMap = useMemo(() => {
-    const map: Record<string, Server> = {};
-    servers.forEach(s => {
-      map[s.id] = s;
-    });
-    return map;
-  }, [servers]);
 
   // Server Picker Options (filtered by search)
   const pickerOptions = useMemo(() => {
@@ -2170,6 +2352,17 @@ export default function AdminPanel({
           Members Directory
         </button>
         <button
+          onClick={() => setAdminTab('attendance')}
+          className={`px-4 py-2 text-xs font-bold tracking-wide uppercase rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            adminTab === 'attendance' 
+              ? 'bg-church-800 text-gold-300 shadow-sm border border-emerald-500/40 font-extrabold' 
+              : 'text-gold-100/50 hover:text-gold-200'
+          }`}
+        >
+          <UserCheck2 className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Attendance Audit ({auditRecords.length})</span>
+        </button>
+        <button
           onClick={() => setAdminTab('receipts')}
           className={`px-4 py-2 text-xs font-bold tracking-wide uppercase rounded-lg transition-all duration-200 cursor-pointer whitespace-nowrap ${
             adminTab === 'receipts' 
@@ -2199,6 +2392,8 @@ export default function AdminPanel({
             servers={servers}
             applicants={applicants}
             currentUser={currentUser}
+            receipts={receipts}
+            auditRecords={auditRecords}
             onDeleteServer={onDeleteServer}
             onAddAnnouncement={onAddAnnouncement}
             onApproveApplicant={onApproveApplicant}
@@ -2631,8 +2826,11 @@ export default function AdminPanel({
           {/* Active Members Directory & Applications */}
           <ActiveMediaDirectory
             servers={servers}
+            schedules={schedules}
             applicants={applicants}
             currentUser={currentUser}
+            receipts={receipts}
+            auditRecords={auditRecords}
             onDeleteServer={onDeleteServer}
             onAddAnnouncement={onAddAnnouncement}
             onApproveApplicant={onApproveApplicant}
@@ -2641,6 +2839,293 @@ export default function AdminPanel({
             onUpdatePassword={onUpdatePassword}
             onUpdateServer={onUpdateServer}
           />
+        </div>
+      )}
+
+      {/* VIEW: ATTENDANCE AUDIT & REFLECTIONS SUMMARY */}
+      {adminTab === 'attendance' && (
+        <div className="bg-church-900/40 p-6 rounded-2xl border border-church-700/60 space-y-6 shadow-md animate-fade-in">
+          {/* Header & Quick Action */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-church-700/60">
+            <div>
+              <h4 className="font-bold text-gold-100 font-serif text-base flex items-center gap-2">
+                <UserCheck2 className="w-5 h-5 text-emerald-400" />
+                <span>Media Ministry Attendance & Reflection Audit</span>
+              </h4>
+              <p className="text-xs text-gold-200/70 mt-0.5 font-serif">
+                Track attended servers, missing service reflections, and schedule compliance across all parish masses.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {onRunAuditNow && (
+                <button
+                  type="button"
+                  onClick={onRunAuditNow}
+                  className="px-3 py-1.5 rounded-xl bg-gold-500/15 hover:bg-gold-500/25 text-gold-200 border border-gold-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-gold-400" />
+                  <span>Audit Completed Masses</span>
+                </button>
+              )}
+              {onOpenSubAdminAudit && (
+                <button
+                  type="button"
+                  onClick={onOpenSubAdminAudit}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sub-Admin Panel</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Metrics Overview Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div className="p-3.5 rounded-xl bg-church-950 border border-emerald-500/30 space-y-1">
+              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Attended & Reflected
+              </span>
+              <span className="text-2xl font-extrabold text-emerald-300 block">
+                {validAuditRecords.filter(a => a.status === 'attended').length}
+              </span>
+              <span className="text-[10px] text-emerald-400/70 block">
+                {receipts.length} total reflections logged
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-church-950 border border-red-500/30 space-y-1">
+              <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <UserX className="w-3.5 h-3.5" /> Did Not Attend / Unresponsive
+              </span>
+              <span className="text-2xl font-extrabold text-red-300 block">
+                {validAuditRecords.filter(a => a.status === 'unresponsive_absent').length}
+              </span>
+              <span className="text-[10px] text-red-400/70 block">
+                Missing post-service reflection
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-church-950 border border-amber-500/30 space-y-1">
+              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <ArrowRightLeft className="w-3.5 h-3.5" /> Substituted / Excused
+              </span>
+              <span className="text-2xl font-extrabold text-amber-300 block">
+                {validAuditRecords.filter(a => a.status === 'substituted' || a.status === 'excused').length}
+              </span>
+              <span className="text-[10px] text-amber-400/70 block">
+                Verbal / approved substitute
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-church-950 border border-church-700/60 space-y-1">
+              <span className="text-[10px] text-gold-400 font-bold uppercase tracking-wider block">
+                Compliance Rate
+              </span>
+              <span className="text-2xl font-extrabold text-gold-200 block">
+                {validAuditRecords.length > 0 
+                  ? Math.round((validAuditRecords.filter(a => a.status === 'attended').length / validAuditRecords.length) * 100) 
+                  : 100}%
+              </span>
+              <span className="text-[10px] text-gold-400/70 block">
+                {validAuditRecords.length} finished service slots
+              </span>
+            </div>
+          </div>
+
+          {/* Policy Callout Banner */}
+          <div className="p-3.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-xs font-serif text-amber-200/90 flex items-start gap-2.5 shadow-sm">
+            <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-amber-300">Assignment Accountability Policy:</span> Attendance tracking and reflection submissions apply <strong>strictly to servers explicitly selected and assigned</strong> to published liturgy schedules (e.g. <em>Nineteenth Sunday in Ordinary Time</em>). Unassigned members remain in active standing as <strong>Off Duty / Not Scheduled</strong> and are not marked absent.
+            </div>
+          </div>
+
+          {/* Filter & Search Toolbar */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-church-950 p-3.5 rounded-xl border border-church-750">
+            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('all')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  attendanceFilter === 'all'
+                    ? 'bg-gold-500 text-church-950 shadow'
+                    : 'text-gold-200/60 hover:text-gold-200 bg-church-900'
+                }`}
+              >
+                All Records ({validAuditRecords.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('attended')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  attendanceFilter === 'attended'
+                    ? 'bg-emerald-500 text-church-950 shadow'
+                    : 'text-emerald-400/80 hover:text-emerald-300 bg-emerald-950/40 border border-emerald-800/40'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Attended ({validAuditRecords.filter(a => a.status === 'attended').length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter('unresponsive')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  attendanceFilter === 'unresponsive'
+                    ? 'bg-red-500 text-white shadow'
+                    : 'text-red-400/80 hover:text-red-300 bg-red-950/40 border border-red-800/40'
+                }`}
+              >
+                <UserX className="w-3.5 h-3.5" />
+                <span>Did Not Attend / Pending ({validAuditRecords.filter(a => a.status === 'unresponsive_absent').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRemindAllUnresponsive}
+                className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 shadow-md ml-1"
+                title="Open in-app batch email reminder for all servers with missing reflections"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Remind All ({validAuditRecords.filter(a => a.status === 'unresponsive_absent').length})</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              {/* Filter by Specific Published Schedule Title */}
+              {uniqueScheduleTitles.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-church-900 px-2.5 py-1.5 rounded-lg border border-church-700 text-xs font-mono w-full sm:w-auto">
+                  <BookOpen className="w-3.5 h-3.5 text-gold-400 shrink-0" />
+                  <select
+                    value={scheduleTitleFilter}
+                    onChange={(e) => setScheduleTitleFilter(e.target.value)}
+                    className="bg-transparent text-gold-200 font-bold focus:outline-none cursor-pointer max-w-[200px] sm:max-w-[240px] truncate"
+                  >
+                    <option value="all" className="bg-church-950 text-gold-200">All Published Masses ({uniqueScheduleTitles.length})</option>
+                    {uniqueScheduleTitles.map((title, idx) => (
+                      <option key={idx} value={title} className="bg-church-950 text-gold-200">
+                        {title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="relative w-full sm:w-56 shrink-0">
+                <input
+                  type="text"
+                  placeholder="Search server, role..."
+                  value={attendanceSearch}
+                  onChange={(e) => setAttendanceSearch(e.target.value)}
+                  className="w-full bg-church-900 text-gold-100 text-xs rounded-lg pl-8 pr-3 py-1.5 border border-church-700 focus:outline-none focus:border-gold-400 font-mono"
+                />
+                <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gold-400/50" />
+              </div>
+            </div>
+          </div>
+
+          {/* Audit Records List */}
+          <div className="space-y-3">
+            {filteredAuditRecords.length > 0 ? (
+              filteredAuditRecords.map((record) => {
+                const serverObj = serverMap[record.serverId];
+                const matchingReceipt = receipts.find(
+                  r => r.serverId === record.serverId && r.date === record.date && r.role === record.role
+                );
+
+                return (
+                  <div
+                    key={record.id}
+                    className={`p-4 rounded-xl border transition-all space-y-3 ${
+                      record.status === 'attended'
+                        ? 'bg-church-950 border-emerald-500/30 hover:border-emerald-500/50'
+                        : record.status === 'unresponsive_absent'
+                        ? 'bg-red-950/20 border-red-500/40 hover:border-red-500/60'
+                        : 'bg-church-950 border-amber-500/30'
+                    }`}
+                  >
+                    {/* Mass Title Header Badge */}
+                    <div className="flex items-center justify-between border-b border-church-800/80 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-serif font-bold text-gold-300">
+                        <BookOpen className="w-3.5 h-3.5 text-gold-400" />
+                        <span>{record.dayName}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-gold-400/70">
+                        Duty: <strong className="text-gold-200 font-semibold">{record.role.replace('_', ' ').toUpperCase()}</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={serverObj?.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+                          alt={record.serverName}
+                          className="w-10 h-10 rounded-full object-cover border border-gold-500/30 shadow-sm"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-extrabold text-sm text-gold-100">{record.serverName}</h5>
+                            <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-church-900 text-gold-300 font-bold border border-church-750">
+                              {record.role.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gold-400/80 font-mono mt-0.5">
+                            <span className="text-gold-200 font-bold">{record.date}</span> @ {record.time}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status Selector Dropdown */}
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <select
+                          value={record.status}
+                          onChange={(e) => onUpdateAuditStatus && onUpdateAuditStatus(record.id, e.target.value as AttendanceAuditStatus)}
+                          className={`text-xs font-mono font-bold rounded-xl px-2.5 py-1.5 border focus:outline-none cursor-pointer ${
+                            record.status === 'attended'
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-600/60'
+                              : record.status === 'unresponsive_absent'
+                              ? 'bg-red-950 text-red-300 border-red-600/60'
+                              : 'bg-amber-950 text-amber-300 border-amber-600/60'
+                          }`}
+                        >
+                          <option value="attended">🟢 Attended & Reflected</option>
+                          <option value="unresponsive_absent">🔴 Did Not Attend / Unresponsive</option>
+                          <option value="substituted">🟡 Substituted</option>
+                          <option value="excused">🔵 Excused Absence</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Submitted Reflection Content */}
+                    {matchingReceipt ? (
+                      <div className="p-3 bg-church-900 rounded-xl border border-emerald-500/30 text-xs space-y-1">
+                        <span className="text-[10px] text-emerald-400 font-mono font-bold uppercase block">
+                          ✓ Verified Service Reflection ({matchingReceipt.timestamp ? matchingReceipt.timestamp.split('T')[0] : 'Logged'}):
+                        </span>
+                        <p className="text-gold-100 italic font-serif">"{matchingReceipt.reflection}"</p>
+                      </div>
+                    ) : record.status === 'unresponsive_absent' ? (
+                      <div className="p-2.5 bg-red-950/40 rounded-xl border border-red-800/40 text-xs text-red-300/90 flex items-center justify-between gap-2">
+                        <span className="font-mono text-[11px]">⚠️ Service concluded without post-mass reflection receipt.</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSingleReminder(record)}
+                          className="px-2.5 py-1 rounded bg-red-900/60 hover:bg-red-800 text-red-200 text-[10px] font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                        >
+                          <Mail className="w-3 h-3" />
+                          <span>Remind Server</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12 text-gold-200/40 text-xs font-mono">
+                No attendance audit records found matching your filter criteria.
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -3647,6 +4132,148 @@ export default function AdminPanel({
           dispatchResult={emailModalData}
           onClose={() => setEmailModalData(null)}
         />
+      )}
+
+      {/* Interactive In-App Email Reminder Modal */}
+      {reminderModal && reminderModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-church-950 border border-gold-500/40 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl relative text-gold-100 font-serif">
+            <button
+              type="button"
+              onClick={() => setReminderModal(null)}
+              className="absolute top-4 right-4 text-gold-400/60 hover:text-gold-200 p-1.5 rounded-lg bg-church-900 border border-church-750 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-church-750 pb-3">
+              <div className="w-10 h-10 rounded-xl bg-gold-500/20 border border-gold-500/40 flex items-center justify-center text-gold-400">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-gold-100">{reminderModal.title}</h3>
+                <p className="text-xs text-gold-300/70 font-mono">
+                  Send reflection reminder directly via 1-click clipboard or email dispatch
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 font-mono text-xs">
+              {/* Recipients */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-gold-300 uppercase tracking-wider">
+                  <span>Recipient Email(s) ({reminderModal.emails.length})</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (reminderModal.emails.length > 0) {
+                        navigator.clipboard.writeText(reminderModal.emails.join(', '));
+                        setReminderModal(prev => prev ? { ...prev, copiedEmails: true } : null);
+                        setTimeout(() => {
+                          setReminderModal(prev => prev ? { ...prev, copiedEmails: false } : null);
+                        }, 2500);
+                      }
+                    }}
+                    className="text-gold-400 hover:text-gold-200 text-[10px] underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {reminderModal.copiedEmails ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{reminderModal.copiedEmails ? 'Copied Emails!' : 'Copy Emails'}</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  readOnly
+                  value={reminderModal.emails.join(', ')}
+                  className="w-full bg-church-900 text-gold-200 p-2.5 rounded-xl border border-church-750 focus:outline-none"
+                />
+              </div>
+
+              {/* Subject */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-gold-300 uppercase tracking-wider block">Email Subject</label>
+                <input
+                  type="text"
+                  value={reminderModal.subject}
+                  onChange={(e) => setReminderModal(prev => prev ? { ...prev, subject: e.target.value } : null)}
+                  className="w-full bg-church-900 text-gold-100 p-2.5 rounded-xl border border-church-750 focus:outline-none focus:border-gold-400 font-sans font-medium"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-gold-300 uppercase tracking-wider">
+                  <span>Message Content</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${reminderModal.subject}\n\n${reminderModal.body}`);
+                      setReminderModal(prev => prev ? { ...prev, copiedBody: true } : null);
+                      setTimeout(() => {
+                        setReminderModal(prev => prev ? { ...prev, copiedBody: false } : null);
+                      }, 2500);
+                    }}
+                    className="text-gold-400 hover:text-gold-200 text-[10px] underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {reminderModal.copiedBody ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{reminderModal.copiedBody ? 'Copied Message!' : 'Copy Full Message'}</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={6}
+                  value={reminderModal.body}
+                  onChange={(e) => setReminderModal(prev => prev ? { ...prev, body: e.target.value } : null)}
+                  className="w-full bg-church-900 text-gold-100 p-3 rounded-xl border border-church-750 focus:outline-none focus:border-gold-400 font-sans text-xs leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-church-750">
+              <button
+                type="button"
+                onClick={() => {
+                  if (reminderModal.emails.length > 0) {
+                    const mailtoUrl = `mailto:${reminderModal.emails.join(',')}?subject=${encodeURIComponent(reminderModal.subject)}&body=${encodeURIComponent(reminderModal.body)}`;
+                    window.location.href = mailtoUrl;
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl bg-church-900 hover:bg-church-850 text-gold-300 border border-church-700 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Launch installed email client as an option"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-gold-400" />
+                <span>Launch Mail Client</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (reminderModal.emails.length > 0) {
+                      navigator.clipboard.writeText(reminderModal.emails.join(', '));
+                      alert('✅ Recipient email address(es) copied to clipboard! You can paste them into Gmail/Yahoo/Outlook.');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gold-500/20 hover:bg-gold-500/30 text-gold-200 border border-gold-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5 text-gold-400" />
+                  <span>Copy Emails</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReminderModal(null);
+                    alert('✅ Reflection reminder logged and completed!');
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Done</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
