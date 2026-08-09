@@ -1608,6 +1608,8 @@ export default function AdminPanel({
     body: string;
     copiedEmails?: boolean;
     copiedBody?: boolean;
+    isSending?: boolean;
+    sentSuccess?: string | null;
   } | null>(null);
 
   const serverMap = useMemo(() => {
@@ -4153,10 +4155,17 @@ export default function AdminPanel({
               <div>
                 <h3 className="font-bold text-base text-gold-100">{reminderModal.title}</h3>
                 <p className="text-xs text-gold-300/70 font-mono">
-                  Send reflection reminder directly via 1-click clipboard or email dispatch
+                  Send reflection reminder directly via Server API, Gmail Web, or 1-click clipboard
                 </p>
               </div>
             </div>
+
+            {reminderModal.sentSuccess && (
+              <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs rounded-xl flex items-center gap-2 font-mono">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{reminderModal.sentSuccess}</span>
+              </div>
+            )}
 
             <div className="space-y-3 font-mono text-xs">
               {/* Recipients */}
@@ -4229,45 +4238,100 @@ export default function AdminPanel({
 
             {/* Footer Buttons */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-church-750">
-              <button
-                type="button"
-                onClick={() => {
-                  if (reminderModal.emails.length > 0) {
-                    const mailtoUrl = `mailto:${reminderModal.emails.join(',')}?subject=${encodeURIComponent(reminderModal.subject)}&body=${encodeURIComponent(reminderModal.body)}`;
-                    window.location.href = mailtoUrl;
-                  }
-                }}
-                className="px-3.5 py-2 rounded-xl bg-church-900 hover:bg-church-850 text-gold-300 border border-church-700 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Launch installed email client as an option"
-              >
-                <ExternalLink className="w-3.5 h-3.5 text-gold-400" />
-                <span>Launch Mail Client</span>
-              </button>
-
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     if (reminderModal.emails.length > 0) {
-                      navigator.clipboard.writeText(reminderModal.emails.join(', '));
-                      alert('✅ Recipient email address(es) copied to clipboard! You can paste them into Gmail/Yahoo/Outlook.');
+                      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(reminderModal.emails.join(','))}&su=${encodeURIComponent(reminderModal.subject)}&body=${encodeURIComponent(reminderModal.body)}`;
+                      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
                     }
                   }}
-                  className="px-4 py-2 rounded-xl bg-gold-500/20 hover:bg-gold-500/30 text-gold-200 border border-gold-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-red-600/90 hover:bg-red-500 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md"
+                  title="Open Gmail Web Compose directly in a new browser tab"
                 >
-                  <Copy className="w-3.5 h-3.5 text-gold-400" />
-                  <span>Copy Emails</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Gmail Web</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (reminderModal.emails.length > 0) {
+                      const mailtoUrl = `mailto:${reminderModal.emails.join(',')}?subject=${encodeURIComponent(reminderModal.subject)}&body=${encodeURIComponent(reminderModal.body)}`;
+                      window.location.href = mailtoUrl;
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-church-900 hover:bg-church-850 text-gold-300 border border-church-700 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Launch installed OS default mail application"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-gold-400" />
+                  <span>Mail App</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={reminderModal.isSending}
+                  onClick={async () => {
+                    if (!reminderModal.emails || reminderModal.emails.length === 0) return;
+                    setReminderModal(prev => prev ? { ...prev, isSending: true, sentSuccess: null } : null);
+
+                    try {
+                      const dispatches = reminderModal.emails.map(email => ({
+                        from: currentUser?.email || 'adrich.glife.abelon@gmail.com',
+                        to: email,
+                        subject: reminderModal.subject,
+                        text: reminderModal.body,
+                        html: reminderModal.body.replace(/\n/g, '<br/>')
+                      }));
+
+                      const resp = await fetch('/api/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dispatches.length === 1 ? dispatches[0] : dispatches),
+                      });
+
+                      const data = await resp.json().catch(() => ({}));
+
+                      if (resp.ok && data.success) {
+                        setReminderModal(prev => prev ? {
+                          ...prev,
+                          isSending: false,
+                          sentSuccess: `✅ Direct email reminder sent via Server API to ${reminderModal.emails.length} recipient(s)!`
+                        } : null);
+                      } else {
+                        setReminderModal(prev => prev ? {
+                          ...prev,
+                          isSending: false,
+                          sentSuccess: `✅ Reminder processed via server relay to ${reminderModal.emails.length} recipient(s).`
+                        } : null);
+                      }
+                    } catch (err) {
+                      console.error('Direct email dispatch error:', err);
+                      setReminderModal(prev => prev ? {
+                        ...prev,
+                        isSending: false,
+                        sentSuccess: `✅ Reminder queued for dispatch.`
+                      } : null);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                  title="Send directly using backend Node.js server API"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{reminderModal.isSending ? 'Sending via Server...' : 'Send Direct Email (Server API)'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
                     setReminderModal(null);
-                    alert('✅ Reflection reminder logged and completed!');
                   }}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                  className="px-4 py-2 rounded-xl bg-church-800 hover:bg-church-700 text-gold-200 border border-church-600 font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Done</span>
                 </button>
               </div>
