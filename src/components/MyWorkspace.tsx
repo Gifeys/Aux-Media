@@ -156,9 +156,16 @@ export default function MyWorkspace({
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Find all schedule slots assigned to current user
-  const myAssignedSlots = useMemo(() => {
-    const list: Array<{
+  // Find all schedule slots assigned to current user (separated into active/pending vs completed)
+  const { myAssignedSlots, myCompletedSlots } = useMemo(() => {
+    const activeList: Array<{
+      row: ScheduleRow;
+      slotId: string;
+      time: string;
+      role: SocComRole;
+    }> = [];
+
+    const completedList: Array<{
       row: ScheduleRow;
       slotId: string;
       time: string;
@@ -174,19 +181,22 @@ export default function MyWorkspace({
             ? val.includes(currentUser.id)
             : (typeof val === 'string' && val === currentUser.id);
           if (isAssigned) {
-            list.push({
-              row,
-              slotId: slot.id,
-              time: slot.time,
-              role
-            });
+            const hasSubmittedReceipt = receipts.some(
+              r => r.serverId === currentUser.id && r.date === row.date && r.role === role
+            );
+
+            if (hasSubmittedReceipt) {
+              completedList.push({ row, slotId: slot.id, time: slot.time, role });
+            } else {
+              activeList.push({ row, slotId: slot.id, time: slot.time, role });
+            }
           }
         });
       });
     });
 
-    return list;
-  }, [schedules, currentUser.id]);
+    return { myAssignedSlots: activeList, myCompletedSlots: completedList };
+  }, [schedules, currentUser.id, receipts]);
 
   // Helper to format comma-separated assigned server names for a slot role
   const getRoleServerNames = (slot: any, role: SocComRole) => {
@@ -798,6 +808,48 @@ export default function MyWorkspace({
                 </div>
               )}
             </div>
+
+            {/* Completed & Reflected Services Archive */}
+            {myCompletedSlots.length > 0 && (
+              <div className="p-5 pt-0">
+                <div className="p-4 bg-emerald-950/20 rounded-xl border border-emerald-500/30 space-y-3">
+                  <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 font-mono">
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span>Completed Services & Submitted Reflections ({myCompletedSlots.length})</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-400/80 font-mono">Auto-removed from active schedule</span>
+                  </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                    {myCompletedSlots.map(({ row, time, role }) => {
+                      const matchingReceipt = receipts.find(
+                        r => r.serverId === currentUser.id && r.date === row.date && r.role === role
+                      );
+                      return (
+                        <div key={`${row.id}-${role}-completed`} className="p-3 bg-church-950/80 rounded-xl border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-gold-100">{row.dayName}</span>
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono px-2 py-0.5 rounded font-bold uppercase">{role.replace('_', ' ')}</span>
+                            </div>
+                            <p className="text-[10px] text-gold-300/70 font-mono mt-0.5">{row.date} @ {time}</p>
+                            {matchingReceipt && (
+                              <p className="text-[11px] text-emerald-200/90 italic font-serif mt-1 bg-church-900/60 p-2 rounded border border-emerald-500/20">
+                                "{matchingReceipt.reflection}"
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30 shrink-0 self-start sm:self-center flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3 text-emerald-400" />
+                            <span>Done & Reflected</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

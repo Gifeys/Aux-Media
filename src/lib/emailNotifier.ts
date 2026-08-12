@@ -136,19 +136,19 @@ export function generateScheduleEmailData(
       assignments,
     });
 
-    const email = server.email || `${server.name.toLowerCase().replace(/\s+/g, '')}@auxiladora.org`;
+    const email = server.email || `${server.name.toLowerCase().replace(/\s+/g, '')}@auxiliadora.org`;
     if (!batchEmails.includes(email)) {
       batchEmails.push(email);
     }
   });
 
-  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
+  const siteUrl = typeof window !== 'undefined' ? (window.location.origin + window.location.pathname) : 'https://auxiliadora-media.web.app';
   const subject = `⛪ [Liturgy Schedule] Assigned Duty: ${scheduleRow.dayName} (${scheduleRow.date})`;
 
   // Generate individual personalized emails for each assigned server
   const individualDispatches: IndividualEmailDispatch[] = serverNotices.map((notice) => {
     const textBody = formatIndividualServerEmailBody(notice.server.name, scheduleRow, notice.assignments, siteUrl);
-    const toEmail = notice.server.email || `${notice.server.name.toLowerCase().replace(/\s+/g, '')}@auxiladora.org`;
+    const toEmail = notice.server.email || `${notice.server.name.toLowerCase().replace(/\s+/g, '')}@auxiliadora.org`;
     return {
       to: toEmail,
       serverName: notice.server.name,

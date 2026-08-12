@@ -82,7 +82,8 @@ export default function SubAdminAttendanceModal({
 
   const handleSendWarningEmail = (record: ScheduleAuditRecord) => {
     const roleTitle = ROLE_DISPLAY_NAMES[record.role] || record.role;
-    const email = record.serverEmail || `${record.serverName.toLowerCase().replace(/\s+/g, '')}@auxiladora.org`;
+    const email = record.serverEmail || `${record.serverName.toLowerCase().replace(/\s+/g, '')}@auxiliadora.org`;
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
     const subject = `⚠️ [SocCom Sub-Admin Attendance Notice] Missed Shift / Pending Reflection: ${record.dayName} (${record.date})`;
     const body = `Dear ${record.serverName},\n\n` +
       `This is an automated attendance & responsiveness notification from the Auxiliadora Media Ministry Sub-Admin Panel.\n\n` +
@@ -91,7 +92,8 @@ export default function SubAdminAttendanceModal({
       `📆 Date & Time: ${record.date} @ ${record.time}\n` +
       `🎯 Assigned Role: ${roleTitle}\n\n` +
       `Status: NO REFLECTION SUBMITTED / NO RESPONSE CONFIRMED.\n\n` +
-      `Please log in to your Auxiliadora Media portal immediately (Workspace tab) to submit your post-service reflection receipt or contact the Sub-Admin team if you had an emergency.\n\n` +
+      `Please log in to your Auxiliadora Media portal immediately (Workspace tab) to submit your post-service reflection receipt or contact the Sub-Admin team if you had an emergency:\n\n` +
+      `🌐 PORTAL WEBSITE LINK:\n${siteUrl}\n\n` +
       `Blessings in Christ,\n` +
       `Auxiliadora Media Ministry Sub-Admin Team\n` +
       `Mary Help of Christians Parish`;

@@ -219,9 +219,14 @@ export default function App() {
 
     // 9. Service Receipts
     const unsubReceipts = onSnapshot(collection(db, 'receipts'), (snapshot) => {
-      const loaded: ServiceReceipt[] = [];
-      snapshot.forEach((d) => loaded.push(d.data() as ServiceReceipt));
-      setReceipts(loaded);
+      const loadedMap = new Map<string, ServiceReceipt>();
+      snapshot.forEach((d) => {
+        const item = d.data() as ServiceReceipt;
+        if (item && item.id) {
+          loadedMap.set(item.id, item);
+        }
+      });
+      setReceipts(Array.from(loadedMap.values()));
     }, (error) => handleFirestoreError(error, OperationType.GET, 'receipts'));
 
     return () => {
@@ -576,20 +581,51 @@ export default function App() {
     }
   };
 
+  const handleSaveReceipt = (receiptData: Omit<ServiceReceipt, 'id' | 'timestamp'>) => {
+    // Check if a receipt for this exact serverId, date, and role ALREADY EXISTS
+    const existing = receipts.find(r => 
+      r.serverId === receiptData.serverId &&
+      r.date === receiptData.date &&
+      r.role === receiptData.role
+    );
+
+    if (existing) {
+      // Update existing receipt instead of creating a duplicate entry
+      const updatedReceipt: ServiceReceipt = {
+        ...existing,
+        reflection: receiptData.reflection,
+        dayName: receiptData.dayName || existing.dayName,
+        time: receiptData.time || existing.time,
+        timestamp: new Date().toISOString()
+      };
+      setReceipts(prev => prev.map(r => r.id === existing.id ? updatedReceipt : r));
+      setDoc(doc(db, 'receipts', existing.id), updatedReceipt)
+        .catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${existing.id}`));
+    } else {
+      const newReceipt: ServiceReceipt = {
+        ...receiptData,
+        id: `receipt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString()
+      };
+      setReceipts(prev => {
+        if (prev.some(r => r.id === newReceipt.id)) return prev;
+        return [newReceipt, ...prev];
+      });
+      setDoc(doc(db, 'receipts', newReceipt.id), newReceipt)
+        .catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
+    }
+  };
+
   const handleSubmitReflectionText = (text: string) => {
-    const newReceipt: ServiceReceipt = {
-      id: `receipt-${Date.now()}`,
+    handleSaveReceipt({
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       time: '05:30 PM',
       dayName: 'Liturgical Mass Service',
       serverId: currentUser.id,
       serverName: currentUser.name,
       role: currentUser.role,
-      reflection: text,
-      timestamp: new Date().toISOString()
-    };
-    setReceipts(prev => [newReceipt, ...prev]);
-    setDoc(doc(db, 'receipts', newReceipt.id), newReceipt).catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
+      reflection: text
+    });
   };
 
   const handleDeleteReceipt = (id: string) => {
@@ -941,15 +977,7 @@ export default function App() {
               auditRecords={auditRecords}
               subAdminAlerts={subAdminAlerts}
               onOpenSubAdminAudit={() => setShowSubAdminAuditModal(true)}
-              onSubmitReceipt={(receiptData) => {
-                const newReceipt: ServiceReceipt = {
-                  ...receiptData,
-                  id: `receipt-${Date.now()}`,
-                  timestamp: new Date().toISOString()
-                };
-                setReceipts(prev => [newReceipt, ...prev]);
-                setDoc(doc(db, 'receipts', newReceipt.id), newReceipt).catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
-              }}
+              onSubmitReceipt={handleSaveReceipt}
             />
           )}
 
@@ -965,15 +993,7 @@ export default function App() {
               onUpdateServer={handleUpdateServer}
               onSendSubRequest={handleSendSubRequest}
               onRespondSubRequest={handleRespondSubRequest}
-              onSubmitReceipt={(receiptData) => {
-                const newReceipt: ServiceReceipt = {
-                  ...receiptData,
-                  id: `receipt-${Date.now()}`,
-                  timestamp: new Date().toISOString()
-                };
-                setReceipts(prev => [newReceipt, ...prev]);
-                setDoc(doc(db, 'receipts', newReceipt.id), newReceipt).catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
-              }}
+              onSubmitReceipt={handleSaveReceipt}
             />
           )}
 
@@ -1038,15 +1058,7 @@ export default function App() {
               onOpenSubAdminAudit={() => setShowSubAdminAuditModal(true)}
               onUpdateAuditStatus={handleUpdateAuditStatus}
               onRunAuditNow={handleRunScheduleAudit}
-              onSubmitReceipt={(receiptData) => {
-                const newReceipt: ServiceReceipt = {
-                  ...receiptData,
-                  id: `receipt-${Date.now()}`,
-                  timestamp: new Date().toISOString()
-                };
-                setReceipts(prev => [newReceipt, ...prev]);
-                setDoc(doc(db, 'receipts', newReceipt.id), newReceipt).catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
-              }}
+              onSubmitReceipt={handleSaveReceipt}
             />
           )}
         </main>

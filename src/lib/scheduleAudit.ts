@@ -219,7 +219,7 @@ export function auditFinishedSchedules(
   });
 
   return {
-    updatedAudits: updatedAuditsList,
+    updatedAudits: Array.from(auditMap.values()),
     newAlerts
   };
 }

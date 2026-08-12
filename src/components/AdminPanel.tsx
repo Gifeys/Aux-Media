@@ -1669,9 +1669,9 @@ export default function AdminPanel({
     }
 
     const names = Array.from(new Set(unresponsiveAudits.map(a => a.serverName))).join(', ');
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
+    const siteUrl = typeof window !== 'undefined' ? (window.location.origin + window.location.pathname) : 'https://auxiliadora-media.web.app';
     const subject = `⚠️ Action Required: Submit Service Reflection - Auxiliadora Media Ministry`;
-    const body = `Peace be with you!\n\nOur records show that you were scheduled for liturgical service at Auxiliadora Media Ministry but have not yet submitted your post-mass spiritual reflection.\n\nPlease open the website portal to view your assigned duties and submit your reflection:\n${siteUrl}\n\nIn Christ,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
+    const body = `Peace be with you!\n\nOur records show that you were scheduled for liturgical service at Auxiliadora Media Ministry but have not yet submitted your post-mass spiritual reflection.\n\nPlease open the website portal to view your assigned duties and submit your reflection:\n🌐 ${siteUrl}\n\nIn Christ,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
 
     setReminderModal({
       isOpen: true,
@@ -1686,9 +1686,9 @@ export default function AdminPanel({
 
   const handleOpenSingleReminder = (record: ScheduleAuditRecord) => {
     const email = record.serverEmail || serverMap[record.serverId]?.email || '';
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://auxiliadora-media.web.app';
+    const siteUrl = typeof window !== 'undefined' ? (window.location.origin + window.location.pathname) : 'https://auxiliadora-media.web.app';
     const subject = `⚠️ Attendance & Reflection Reminder: ${record.dayName} Mass - Auxiliadora Media Ministry`;
-    const body = `Dear ${record.serverName},\n\nOur records show that you were selected and assigned for liturgical service at Auxiliadora Media Ministry for the ${record.dayName} Mass on ${record.date} at ${record.time} as ${record.role.replace('_', ' ').toUpperCase()}.\n\nPlease log in to the Auxiliadora Media Portal to submit your post-mass spiritual service reflection or contact your Sub-Admin if you experienced an emergency.\n\nPortal URL:\n${siteUrl}\n\nWarm regards,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
+    const body = `Dear ${record.serverName},\n\nOur records show that you were selected and assigned for liturgical service at Auxiliadora Media Ministry for the ${record.dayName} Mass on ${record.date} at ${record.time} as ${record.role.replace('_', ' ').toUpperCase()}.\n\nPlease log in to the Auxiliadora Media Portal to submit your post-mass spiritual service reflection or contact your Sub-Admin if you experienced an emergency.\n\n🌐 Website Portal Link:\n${siteUrl}\n\nWarm regards,\nAuxiliadora Media Ministry Council\nMary Help of Christians Parish`;
 
     setReminderModal({
       isOpen: true,

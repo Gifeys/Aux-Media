@@ -5,7 +5,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { ServerNote, Server } from '../types';
-import { StickyNote, Plus, Lock, Globe, Trash2, Edit, Search, Filter, ShieldAlert, Check, X, Calendar, User, Sparkles } from 'lucide-react';
+import { StickyNote, Plus, Lock, Globe, Trash2, Edit, Search, Filter, ShieldAlert, Check, X, Calendar, User, Sparkles, MessageSquareQuote } from 'lucide-react';
+import ClientFeedback from '@/components/ui/testimonial';
 
 interface NotesViewProps {
   notes: ServerNote[];
@@ -22,7 +23,7 @@ export default function NotesView({
   onUpdateNote,
   onDeleteNote
 }: NotesViewProps) {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'public' | 'private' | 'my_notes'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'public' | 'private' | 'my_notes' | 'testimonials'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -205,6 +206,18 @@ export default function NotesView({
             <span>My Created Notes</span>
             <span className="bg-emerald-500/30 text-emerald-200 text-[10px] px-1.5 py-0.2 rounded-full font-mono">{myNotesCount}</span>
           </button>
+
+          <button
+            onClick={() => setActiveFilter('testimonials')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeFilter === 'testimonials'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                : 'text-[#909096] hover:text-cyan-300 hover:bg-white/5'
+            }`}
+          >
+            <MessageSquareQuote className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Client Feedback Design</span>
+          </button>
         </div>
 
         {/* Search & Category Filter */}
@@ -236,8 +249,19 @@ export default function NotesView({
         </div>
       </div>
 
-      {/* Notes Grid Display */}
-      {visibleNotes.length === 0 ? (
+      {/* Notes Grid Display or Testimonials Showcase */}
+      {activeFilter === 'testimonials' ? (
+        <div className="space-y-4">
+          <div className="p-4 bg-cyan-950/40 border border-cyan-500/30 rounded-2xl flex items-center justify-between text-xs font-mono text-cyan-200">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <span>Client Feedback & Testimonials Component Showcase</span>
+            </div>
+            <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-bold">/components/ui/testimonial.tsx</span>
+          </div>
+          <ClientFeedback />
+        </div>
+      ) : visibleNotes.length === 0 ? (
         <div className="bg-[#0d1c2d]/40 rounded-2xl border border-[#46464c]/20 p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
             <StickyNote className="w-6 h-6" />
