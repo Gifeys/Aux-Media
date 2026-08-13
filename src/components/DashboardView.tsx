@@ -189,10 +189,10 @@ export default function DashboardView({
         if (ann.type === 'bible_verse' || ann.type === 'daily_word') {
           badge = '📖 Daily Word';
           hasDailyWordSlide = true;
-          slideTitle = '📖 Daily Bible Verse';
+          slideTitle = ann.title || '📖 Daily Bible Verse';
           slideSubtitle = activeVerseAuthorName;
-          slideContent = `"${activeVerseQuote}" — ${activeVerseReference}`;
-          slideImageUrl = activeVerseImageUrl;
+          slideContent = ann.content || `"${activeVerseQuote}" — ${activeVerseReference}`;
+          slideImageUrl = ann.imageUrl || activeVerseImageUrl;
         }
 
         items.push({
@@ -1179,7 +1179,7 @@ export default function DashboardView({
                     <span>Daily Word</span>
                   </p>
                   <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-[#010f1f]/80 text-amber-300 border border-amber-500/30 font-semibold">
-                    {isCustomVerseSet ? '✨ Custom Daily Word' : '📖 Word of the Day'}
+                    📖 Word of the Day
                   </span>
                 </div>
 
@@ -1260,7 +1260,7 @@ export default function DashboardView({
                     </div>
 
                     <div className="space-y-1.5 pt-2">
-                      <label className="text-[11px] text-[#909096] font-mono">Custom Painting Image URL</label>
+                      <label className="text-[11px] text-[#909096] font-mono">Painting Image URL</label>
                       <input
                         type="url"
                         value={editVerseImgUrl}

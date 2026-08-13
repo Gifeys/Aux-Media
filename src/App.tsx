@@ -200,10 +200,15 @@ export default function App() {
       setNotes(loaded);
     }, (error) => handleFirestoreError(error, OperationType.GET, 'server_notes'));
 
-    // 7. Site Settings
+    // 7. Site Settings (Band Logo, Login Picture, Custom Branding & Texts)
     const unsubSiteSettings = onSnapshot(doc(db, 'settings', 'site_settings'), (snapshot) => {
       if (snapshot.exists()) {
-        setSiteSettings(snapshot.data() as SiteSettings);
+        const cloudData = snapshot.data() as SiteSettings;
+        setSiteSettings(prev => ({
+          ...DEFAULT_SITE_SETTINGS,
+          ...prev,
+          ...cloudData
+        }));
       } else {
         setDoc(doc(db, 'settings', 'site_settings'), DEFAULT_SITE_SETTINGS).catch(console.warn);
         setSiteSettings(DEFAULT_SITE_SETTINGS);
