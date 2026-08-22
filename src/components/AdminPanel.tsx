@@ -412,6 +412,14 @@ const ServerCardItem = React.memo(({
     }
   };
 
+  const handleToggleFinanceAdmin = () => {
+    if (onUpdateServer) {
+      const updated = { ...server, isFinanceAdmin: !server.isFinanceAdmin };
+      onUpdateServer(updated);
+      alert(`${server.name} ${!server.isFinanceAdmin ? 'granted Finance Reviewer / Officer privileges (Can review pending contributions & audit finances)' : 'removed from Finance Reviewer role'}!`);
+    }
+  };
+
   const handleToggleAdmin = () => {
     if (onUpdateServer) {
       const updated = { ...server, isAdmin: !server.isAdmin };
@@ -457,6 +465,11 @@ const ServerCardItem = React.memo(({
               )}
               {server.isSubAdmin && (
                 <span className="text-[8px] font-bold font-mono uppercase px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60 shadow-sm">Sub-Admin</span>
+              )}
+              {server.isFinanceAdmin && (
+                <span className="text-[8px] font-bold font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 shadow-sm flex items-center gap-0.5">
+                  🪙 Finance Reviewer
+                </span>
               )}
             </div>
 
@@ -562,27 +575,39 @@ const ServerCardItem = React.memo(({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-0.5">
+          <div className="grid grid-cols-3 gap-1.5 pt-0.5">
             <button
               onClick={handleToggleSubAdmin}
-              className={`p-1.5 rounded text-[10px] font-bold border transition-all cursor-pointer text-center ${
+              className={`p-1.5 rounded text-[9px] font-bold border transition-all cursor-pointer text-center ${
                 server.isSubAdmin
                   ? 'bg-amber-950/90 text-amber-200 border-amber-500/60'
                   : 'bg-church-950 hover:bg-amber-950/40 text-gold-200 border-church-750'
               }`}
             >
-              {server.isSubAdmin ? '✓ Sub-Admin Active' : 'Promote Sub-Admin'}
+              {server.isSubAdmin ? '✓ Sub-Admin' : 'Sub-Admin'}
+            </button>
+
+            <button
+              onClick={handleToggleFinanceAdmin}
+              className={`p-1.5 rounded text-[9px] font-bold border transition-all cursor-pointer text-center ${
+                server.isFinanceAdmin
+                  ? 'bg-emerald-950/90 text-emerald-200 border-emerald-500/60'
+                  : 'bg-church-950 hover:bg-emerald-950/40 text-emerald-300 border-church-750'
+              }`}
+              title="Grant/revoke permission to review pending finance contributions"
+            >
+              {server.isFinanceAdmin ? '✓ Finance' : 'Finance'}
             </button>
 
             <button
               onClick={handleToggleAdmin}
-              className={`p-1.5 rounded text-[10px] font-bold border transition-all cursor-pointer text-center ${
+              className={`p-1.5 rounded text-[9px] font-bold border transition-all cursor-pointer text-center ${
                 server.isAdmin
                   ? 'bg-red-950/90 text-red-200 border-red-500/60'
                   : 'bg-church-950 hover:bg-red-950/40 text-gold-200 border-church-750'
               }`}
             >
-              {server.isAdmin ? '✓ Admin Active' : 'Promote Admin'}
+              {server.isAdmin ? '✓ Admin' : 'Admin'}
             </button>
           </div>
 
@@ -1948,6 +1973,7 @@ export default function AdminPanel({
   const [newMemberBirthday, setNewMemberBirthday] = useState('');
   const [newMemberRoles, setNewMemberRoles] = useState<SocComRole[]>(['ppt']);
   const [newMemberIsSub, setNewMemberIsSub] = useState(false);
+  const [newMemberIsFinance, setNewMemberIsFinance] = useState(false);
   const [newMemberIsAdmin, setNewMemberIsAdmin] = useState(false);
 
   // Special Serve Modal State
@@ -2219,6 +2245,7 @@ export default function AdminPanel({
         'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80'
       ],
       isSubAdmin: newMemberIsSub,
+      isFinanceAdmin: newMemberIsFinance,
       isAdmin: newMemberIsAdmin,
       birthday: newMemberBirthday
     };
@@ -2230,6 +2257,7 @@ export default function AdminPanel({
     setNewMemberBirthday('');
     setNewMemberRoles(['ppt']);
     setNewMemberIsSub(false);
+    setNewMemberIsFinance(false);
     setNewMemberIsAdmin(false);
     alert(`New SocCom member added to directory! User created with account access.`);
   };
@@ -2800,6 +2828,19 @@ export default function AdminPanel({
                 />
                 <label htmlFor="newMemberIsSub" className="text-xs text-gold-200 cursor-pointer">
                   Grant Sub-Admin privileges (Can edit schedules)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  id="newMemberIsFinance"
+                  checked={newMemberIsFinance}
+                  onChange={(e) => setNewMemberIsFinance(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                />
+                <label htmlFor="newMemberIsFinance" className="text-xs text-emerald-200 cursor-pointer">
+                  Grant Finance Reviewer privileges (Can review pending contributions)
                 </label>
               </div>
 

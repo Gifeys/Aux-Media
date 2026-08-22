@@ -4,10 +4,38 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Server, ScheduleRow, SubstitutionRequest, ServiceReceipt, Announcement, SocComOfTheMonth, Applicant, SocComRole, SiteSettings, ActiveSession, ServerNote, ScheduleAuditRecord, SubAdminAttendanceAlert, AttendanceAuditStatus } from './types';
-import { DEFAULT_SERVERS, DEFAULT_SCHEDULES, DEFAULT_ANNOUNCEMENTS, DEFAULT_SOCOM_OF_THE_MONTH, DEFAULT_SITE_SETTINGS, DEFAULT_NOTES } from './initialData';
-import { db, handleFirestoreError, OperationType, resetUserPassword, createFirebaseAuthAccount } from './lib/firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { 
+  Server, 
+  ScheduleRow, 
+  SubstitutionRequest, 
+  ServiceReceipt, 
+  Announcement, 
+  SocComOfTheMonth, 
+  Applicant, 
+  SocComRole, 
+  SiteSettings, 
+  ActiveSession, 
+  ServerNote, 
+  ScheduleAuditRecord, 
+  SubAdminAttendanceAlert, 
+  AttendanceAuditStatus,
+  Contribution,
+  Expense,
+  FinancialAuditLog
+} from './types';
+import { 
+  DEFAULT_SERVERS, 
+  DEFAULT_SCHEDULES, 
+  DEFAULT_ANNOUNCEMENTS, 
+  DEFAULT_SOCOM_OF_THE_MONTH, 
+  DEFAULT_SITE_SETTINGS, 
+  DEFAULT_NOTES,
+  DEFAULT_CONTRIBUTIONS,
+  DEFAULT_EXPENSES,
+  DEFAULT_FINANCIAL_AUDIT_LOGS
+} from './initialData';
+import { db, handleFirestoreError, OperationType, resetUserPassword, createFirebaseAuthAccount, cleanFirestorePayload } from './lib/firebase';
+import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs } from 'firebase/firestore';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
@@ -17,11 +45,13 @@ import ScheduleBoard from './components/ScheduleBoard';
 import MyWorkspace from './components/MyWorkspace';
 import AdminPanel from './components/AdminPanel';
 import CommunityHub from './components/CommunityHub';
+import ResiboView from './components/ResiboView';
 import ModalsContainer from './components/ModalsContainer';
 import AestheticsStudio from './components/AestheticsStudio';
 import LoginScreen from './components/LoginScreen';
 import SubAdminAttendanceModal from './components/SubAdminAttendanceModal';
-import { combineWithAutoMonthBirthdays } from './lib/birthdayUtils';
+import BirthdayGreetingModal from './components/BirthdayGreetingModal';
+import { combineWithAutoMonthBirthdays, isBirthdayToday, getTodayBirthdayCelebrants } from './lib/birthdayUtils';
 import { auditFinishedSchedules } from './lib/scheduleAudit';
 
 export default function App() {
@@ -34,6 +64,10 @@ export default function App() {
   const [subRequests, setSubRequests] = useState<SubstitutionRequest[]>([]);
   const [receipts, setReceipts] = useState<ServiceReceipt[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [financialAuditLogs, setFinancialAuditLogs] = useState<FinancialAuditLog[]>([]);
+  const [birthdayCelebrantToShow, setBirthdayCelebrantToShow] = useState<Server | null>(null);
   const [soccomOfMonth, setSoccomOfMonth] = useState<SocComOfTheMonth>(() => {
     try {
       const saved = localStorage.getItem('aux_soccom_of_the_month');
@@ -234,6 +268,67 @@ export default function App() {
       setReceipts(Array.from(loadedMap.values()));
     }, (error) => handleFirestoreError(error, OperationType.GET, 'receipts'));
 
+    // 10. Resibo — Contributions
+    const unsubContributions = onSnapshot(collection(db, 'contributions'), (snapshot) => {
+      if (!snapshot.empty) {
+        const loaded: Contribution[] = [];
+        snapshot.forEach((d) => {
+          const data = d.data() as Contribution;
+          // Delete old demo contributions if encountered
+          if (['contrib-1', 'contrib-2', 'contrib-3', 'contrib-4', 'contrib-5', 'contrib-6', 'contrib-7', 'contrib-8', 'contrib-9', 'contrib-10'].includes(d.id)) {
+            deleteDoc(doc(db, 'contributions', d.id)).catch(console.warn);
+          } else {
+            loaded.push(data);
+          }
+        });
+        setContributions(loaded);
+      } else {
+        setContributions([]);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'contributions'));
+
+    // 11. Resibo — Expenses
+    const unsubExpenses = onSnapshot(collection(db, 'expenses'), (snapshot) => {
+      if (!snapshot.empty) {
+        const loaded: Expense[] = [];
+        snapshot.forEach((d) => {
+          const data = d.data() as Expense;
+          // Clean up old mock sample expenses from Firestore if encountered
+          if (['exp-1', 'exp-2', 'exp-3', 'exp-4', 'exp-5', 'exp-6', 'exp-7', 'exp-8', 'exp-9', 'exp-10'].includes(d.id)) {
+            deleteDoc(doc(db, 'expenses', d.id)).catch(console.warn);
+          } else {
+            loaded.push(data);
+          }
+        });
+        setExpenses(loaded);
+      } else {
+        setExpenses([]);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'expenses'));
+
+    // 12. Resibo — Financial Audit Logs
+    const unsubAuditLogs = onSnapshot(collection(db, 'financial_audit_logs'), (snapshot) => {
+      if (!snapshot.empty) {
+        const loaded: FinancialAuditLog[] = [];
+        snapshot.forEach((d) => {
+          const data = d.data() as FinancialAuditLog;
+          if (['audit-1', 'audit-2', 'audit-3', 'audit-4', 'audit-5', 'audit-6', 'audit-7'].includes(d.id)) {
+            deleteDoc(doc(db, 'financial_audit_logs', d.id)).catch(console.warn);
+          } else {
+            loaded.push(data);
+          }
+        });
+        setFinancialAuditLogs(loaded.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      } else {
+        setFinancialAuditLogs([]);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'financial_audit_logs'));
+
+    // Cleanup lingering fund_deposits if any exist in Firestore
+    getDocs(collection(db, 'fund_deposits')).then((snap) => {
+      snap.forEach((d) => deleteDoc(doc(db, 'fund_deposits', d.id)).catch(console.warn));
+    }).catch(() => {});
+
     return () => {
       unsubUsers();
       unsubApplicants();
@@ -244,6 +339,9 @@ export default function App() {
       unsubSiteSettings();
       unsubSubReqs();
       unsubReceipts();
+      unsubContributions();
+      unsubExpenses();
+      unsubAuditLogs();
     };
   }, []);
 
@@ -452,6 +550,49 @@ export default function App() {
     return '💻 Desktop/Laptop';
   };
 
+  // Automatic Birthday In-App Greeting & Midnight Email Dispatch
+  useEffect(() => {
+    if (!servers || servers.length === 0) return;
+
+    // 1. In-App Birthday Greeting Modal for logged in celebrant
+    if (currentUser && isBirthdayToday(currentUser.birthday)) {
+      const todayKey = new Date().toISOString().split('T')[0];
+      const seenKey = `aux_bday_modal_seen_${currentUser.id}_${todayKey}`;
+      if (!sessionStorage.getItem(seenKey)) {
+        setBirthdayCelebrantToShow(currentUser);
+        sessionStorage.setItem(seenKey, 'true');
+      }
+    }
+
+    // 2. Automated Midnight Email Dispatch Trigger
+    const checkAndDispatchBirthdays = async () => {
+      try {
+        const celebrants = getTodayBirthdayCelebrants(servers);
+        if (celebrants.length > 0) {
+          const res = await fetch('/api/dispatch-birthdays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ servers })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.dispatched && data.dispatched.length > 0) {
+            console.log('🎂 Birthday email greetings automatically dispatched:', data.dispatched);
+          }
+        }
+      } catch (err) {
+        console.warn('Birthday dispatch check notice:', err);
+      }
+    };
+
+    // Run on mount
+    checkAndDispatchBirthdays();
+
+    // Set interval to check every 60 seconds (catches exact 12:00 midnight crossover)
+    const bdayInterval = setInterval(checkAndDispatchBirthdays, 60000);
+
+    return () => clearInterval(bdayInterval);
+  }, [servers, currentUser]);
+
   // Heartbeat when user is logged in
   useEffect(() => {
     if (!isLoggedIn || !currentUserId) return;
@@ -558,7 +699,7 @@ export default function App() {
     const updatedSubReq: SubstitutionRequest = { ...request, status: newStatus };
 
     setSubRequests(prev => prev.map(r => r.id === requestId ? updatedSubReq : r));
-    setDoc(doc(db, 'sub_requests', requestId), updatedSubReq).catch((err) => handleFirestoreError(err, OperationType.WRITE, `sub_requests/${requestId}`));
+    setDoc(doc(db, 'sub_requests', requestId), cleanFirestorePayload(updatedSubReq)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `sub_requests/${requestId}`));
 
     if (accept) {
       setSchedules(prevSchedules => prevSchedules.map(row => {
@@ -578,7 +719,7 @@ export default function App() {
             return slot;
           });
           const updatedRow = { ...row, slots: updatedSlots };
-          setDoc(doc(db, 'schedules', row.id), updatedRow).catch((err) => handleFirestoreError(err, OperationType.WRITE, `schedules/${row.id}`));
+          setDoc(doc(db, 'schedules', row.id), cleanFirestorePayload(updatedRow)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `schedules/${row.id}`));
           return updatedRow;
         }
         return row;
@@ -604,7 +745,7 @@ export default function App() {
         timestamp: new Date().toISOString()
       };
       setReceipts(prev => prev.map(r => r.id === existing.id ? updatedReceipt : r));
-      setDoc(doc(db, 'receipts', existing.id), updatedReceipt)
+      setDoc(doc(db, 'receipts', existing.id), cleanFirestorePayload(updatedReceipt))
         .catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${existing.id}`));
     } else {
       const newReceipt: ServiceReceipt = {
@@ -616,7 +757,7 @@ export default function App() {
         if (prev.some(r => r.id === newReceipt.id)) return prev;
         return [newReceipt, ...prev];
       });
-      setDoc(doc(db, 'receipts', newReceipt.id), newReceipt)
+      setDoc(doc(db, 'receipts', newReceipt.id), cleanFirestorePayload(newReceipt))
         .catch((err) => handleFirestoreError(err, OperationType.WRITE, `receipts/${newReceipt.id}`));
     }
   };
@@ -644,12 +785,12 @@ export default function App() {
 
   const handleAddSchedule = (newRow: ScheduleRow) => {
     setSchedules(prev => [newRow, ...prev]);
-    setDoc(doc(db, 'schedules', newRow.id), newRow).catch((err) => handleFirestoreError(err, OperationType.WRITE, `schedules/${newRow.id}`));
+    setDoc(doc(db, 'schedules', newRow.id), cleanFirestorePayload(newRow)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `schedules/${newRow.id}`));
   };
 
   const handleUpdateSchedule = (updatedRow: ScheduleRow) => {
     setSchedules(prev => prev.map(s => s.id === updatedRow.id ? updatedRow : s));
-    setDoc(doc(db, 'schedules', updatedRow.id), updatedRow).catch((err) => handleFirestoreError(err, OperationType.WRITE, `schedules/${updatedRow.id}`));
+    setDoc(doc(db, 'schedules', updatedRow.id), cleanFirestorePayload(updatedRow)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `schedules/${updatedRow.id}`));
   };
 
   const handleDeleteSchedule = (id: string) => {
@@ -665,18 +806,18 @@ export default function App() {
       return;
     }
     setServers(prev => [...prev, newServer]);
-    setDoc(doc(db, 'users', newServer.id), newServer).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${newServer.id}`));
+    setDoc(doc(db, 'users', newServer.id), cleanFirestorePayload(newServer)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${newServer.id}`));
   };
 
   const handleUpdateSoccomOfMonth = (updated: SocComOfTheMonth) => {
     setSoccomOfMonth(updated);
-    setDoc(doc(db, 'settings', 'soccom_of_the_month'), updated).catch((err) => handleFirestoreError(err, OperationType.WRITE, 'settings/soccom_of_the_month'));
+    setDoc(doc(db, 'settings', 'soccom_of_the_month'), cleanFirestorePayload(updated)).catch((err) => handleFirestoreError(err, OperationType.WRITE, 'settings/soccom_of_the_month'));
     alert(`🏆 SocCom of the Month updated to ${updated.name}!`);
   };
 
   const handleUpdateServer = (updatedServer: Server) => {
     setServers(prev => prev.map(s => s.id === updatedServer.id ? updatedServer : s));
-    setDoc(doc(db, 'users', updatedServer.id), updatedServer).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${updatedServer.id}`));
+    setDoc(doc(db, 'users', updatedServer.id), cleanFirestorePayload(updatedServer)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${updatedServer.id}`));
   };
 
   const handleDeleteServer = (id: string) => {
@@ -686,12 +827,12 @@ export default function App() {
 
   const handleAddAnnouncement = (ann: Announcement) => {
     setAnnouncements(prev => [ann, ...prev]);
-    setDoc(doc(db, 'announcements', ann.id), ann).catch((err) => handleFirestoreError(err, OperationType.WRITE, `announcements/${ann.id}`));
+    setDoc(doc(db, 'announcements', ann.id), cleanFirestorePayload(ann)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `announcements/${ann.id}`));
   };
 
   const handleUpdateAnnouncement = (updated: Announcement) => {
     setAnnouncements(prev => prev.map(a => a.id === updated.id ? updated : a));
-    setDoc(doc(db, 'announcements', updated.id), updated).catch((err) => handleFirestoreError(err, OperationType.WRITE, `announcements/${updated.id}`));
+    setDoc(doc(db, 'announcements', updated.id), cleanFirestorePayload(updated)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `announcements/${updated.id}`));
   };
 
   const handleDeleteAnnouncement = (id: string) => {
@@ -741,7 +882,7 @@ export default function App() {
     });
 
     try {
-      await setDoc(doc(db, 'applicants', fullApp.id), fullApp);
+      await setDoc(doc(db, 'applicants', fullApp.id), cleanFirestorePayload(fullApp));
       console.log('✅ Applicant registered and synced to Firestore DB:', fullApp.id);
     } catch (err: any) {
       console.error('Error saving applicant to Firestore:', err);
@@ -786,11 +927,11 @@ export default function App() {
     };
 
     setServers(prev => [...prev, newServer]);
-    setDoc(doc(db, 'users', newServer.id), newServer).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${newServer.id}`));
+    setDoc(doc(db, 'users', newServer.id), cleanFirestorePayload(newServer)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${newServer.id}`));
 
     const updatedApp: Applicant = { ...applicant, status: 'approved' };
     setApplicants(prev => prev.map(a => a.id === applicant.id ? updatedApp : a));
-    setDoc(doc(db, 'applicants', applicant.id), updatedApp).catch((err) => handleFirestoreError(err, OperationType.WRITE, `applicants/${applicant.id}`));
+    setDoc(doc(db, 'applicants', applicant.id), cleanFirestorePayload(updatedApp)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `applicants/${applicant.id}`));
 
     // Ensure account exists in Firebase Authentication
     await createFirebaseAuthAccount(applicant.email, applicant.password || 'media123').catch(console.warn);
@@ -812,7 +953,7 @@ export default function App() {
     if (appToReject) {
       const updated = { ...appToReject, status: 'rejected' as const };
       setApplicants(prev => prev.map(a => a.id === id ? updated : a));
-      setDoc(doc(db, 'applicants', id), updated).catch((err) => handleFirestoreError(err, OperationType.WRITE, `applicants/${id}`));
+      setDoc(doc(db, 'applicants', id), cleanFirestorePayload(updated)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `applicants/${id}`));
     }
   };
 
@@ -830,18 +971,18 @@ export default function App() {
         meetingInfo: cleanMeetingInfo
       };
       setApplicants(prev => prev.map(a => a.id === applicantId ? updated : a));
-      setDoc(doc(db, 'applicants', applicantId), updated).catch((err) => handleFirestoreError(err, OperationType.WRITE, `applicants/${applicantId}`));
+      setDoc(doc(db, 'applicants', applicantId), cleanFirestorePayload(updated)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `applicants/${applicantId}`));
     }
   };
 
   const handleAddNote = (note: ServerNote) => {
     setNotes(prev => [note, ...prev]);
-    setDoc(doc(db, 'server_notes', note.id), note).catch((err) => handleFirestoreError(err, OperationType.WRITE, `server_notes/${note.id}`));
+    setDoc(doc(db, 'server_notes', note.id), cleanFirestorePayload(note)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `server_notes/${note.id}`));
   };
 
   const handleUpdateNote = (note: ServerNote) => {
     setNotes(prev => prev.map(n => n.id === note.id ? note : n));
-    setDoc(doc(db, 'server_notes', note.id), note).catch((err) => handleFirestoreError(err, OperationType.WRITE, `server_notes/${note.id}`));
+    setDoc(doc(db, 'server_notes', note.id), cleanFirestorePayload(note)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `server_notes/${note.id}`));
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -857,7 +998,7 @@ export default function App() {
           password: newPass,
           accessToken: newPass
         };
-        setDoc(doc(db, 'users', s.id), updated).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${s.id}`));
+        setDoc(doc(db, 'users', s.id), cleanFirestorePayload(updated)).catch((err) => handleFirestoreError(err, OperationType.WRITE, `users/${s.id}`));
         return updated;
       }
       return s;
@@ -867,7 +1008,7 @@ export default function App() {
   const handleUpdateSiteSettings = (updated: Partial<SiteSettings>) => {
     setSiteSettings(prev => {
       const merged = { ...prev, ...updated };
-      setDoc(doc(db, 'settings', 'site_settings'), merged).catch((err) => handleFirestoreError(err, OperationType.WRITE, 'settings/site_settings'));
+      setDoc(doc(db, 'settings', 'site_settings'), cleanFirestorePayload(merged)).catch((err) => handleFirestoreError(err, OperationType.WRITE, 'settings/site_settings'));
       try {
         localStorage.setItem('aux_site_settings', JSON.stringify(merged));
       } catch (e) {
@@ -875,6 +1016,261 @@ export default function App() {
       }
       return merged;
     });
+  };
+
+  // ---------------------------------------------------------
+  // RESIBO — FINANCIAL MANAGEMENT HANDLERS
+  // ---------------------------------------------------------
+
+  const handleAddContribution = (
+    contribData: Omit<Contribution, 'id' | 'createdAt' | 'status'> & { proofImageUrl?: string }
+  ) => {
+    const newId = `contrib-${Date.now()}`;
+    const newContrib: Contribution = {
+      ...contribData,
+      id: newId,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    setContributions(prev => [newContrib, ...prev]);
+    setDoc(doc(db, 'contributions', newId), cleanFirestorePayload(newContrib)).catch(err =>
+      handleFirestoreError(err, OperationType.WRITE, `contributions/${newId}`)
+    );
+
+    // Record in Financial Audit Log
+    const auditId = `audit-fin-${Date.now()}`;
+    const newAuditLog: FinancialAuditLog = {
+      id: auditId,
+      action: 'contribution_submitted',
+      performedBy: currentUser ? currentUser.name : contribData.submittedBy,
+      performedById: currentUser ? currentUser.id : contribData.submittedById,
+      performedByRole: currentUser?.isAdmin ? 'admin' : currentUser?.isSubAdmin ? 'subadmin' : 'member',
+      targetId: newId,
+      targetType: 'contribution',
+      amount: contribData.amount,
+      description: `Submitted member contribution of ₱${contribData.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} (${contribData.purpose}) - Pending Review`,
+      timestamp: new Date().toISOString()
+    };
+
+    setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+    setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
+  };
+
+  const handleApproveContribution = (contribId: string, note?: string) => {
+    const isAuth = Boolean(currentUser?.isAdmin || currentUser?.isSubAdmin || currentUser?.isFinanceAdmin);
+    if (!isAuth) {
+      alert('Only Admins, Sub-Admins, or Finance Reviewers have permission to approve financial contributions.');
+      return;
+    }
+
+    const target = contributions.find(c => c.id === contribId);
+    if (!target) return;
+
+    const userRoleLabel = currentUser.isAdmin ? 'Admin' : currentUser.isFinanceAdmin ? 'Finance Reviewer' : 'Sub-Admin';
+
+    const updated: Contribution = {
+      ...target,
+      status: 'approved',
+      reviewedBy: currentUser.id,
+      reviewedByName: `${currentUser.name} (${userRoleLabel})`,
+      reviewedAt: new Date().toISOString(),
+      note: note ? (target.note ? `${target.note} [Approved: ${note}]` : note) : target.note
+    };
+
+    setContributions(prev => prev.map(c => c.id === contribId ? updated : c));
+    setDoc(doc(db, 'contributions', contribId), cleanFirestorePayload(updated)).catch(err =>
+      handleFirestoreError(err, OperationType.WRITE, `contributions/${contribId}`)
+    );
+
+    // Audit Log for Approval (Official Balance Increase)
+    const auditId = `audit-fin-${Date.now()}`;
+    const newAuditLog: FinancialAuditLog = {
+      id: auditId,
+      action: 'contribution_approved',
+      performedBy: currentUser.name,
+      performedById: currentUser.id,
+      performedByRole: currentUser.isAdmin ? 'admin' : currentUser.isFinanceAdmin ? 'finance' : 'subadmin',
+      targetId: contribId,
+      targetType: 'contribution',
+      amount: target.amount,
+      description: `Verified and Approved contribution from ${target.submittedBy} (+₱${target.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })})`,
+      timestamp: new Date().toISOString()
+    };
+
+    setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+    setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
+  };
+
+  const handleRejectContribution = (contribId: string, reason?: string) => {
+    const isAuth = Boolean(currentUser?.isAdmin || currentUser?.isSubAdmin || currentUser?.isFinanceAdmin);
+    if (!isAuth) {
+      alert('Only Admins, Sub-Admins, or Finance Reviewers have permission to reject financial contributions.');
+      return;
+    }
+
+    const target = contributions.find(c => c.id === contribId);
+    if (!target) return;
+
+    const userRoleLabel = currentUser.isAdmin ? 'Admin' : currentUser.isFinanceAdmin ? 'Finance Reviewer' : 'Sub-Admin';
+
+    const updated: Contribution = {
+      ...target,
+      status: 'rejected',
+      rejectionReason: reason || 'Not verified',
+      reviewedBy: currentUser.id,
+      reviewedByName: `${currentUser.name} (${userRoleLabel})`,
+      reviewedAt: new Date().toISOString()
+    };
+
+    setContributions(prev => prev.map(c => c.id === contribId ? updated : c));
+    setDoc(doc(db, 'contributions', contribId), cleanFirestorePayload(updated)).catch(err =>
+      handleFirestoreError(err, OperationType.WRITE, `contributions/${contribId}`)
+    );
+
+    // Audit Log for Rejection
+    const auditId = `audit-fin-${Date.now()}`;
+    const newAuditLog: FinancialAuditLog = {
+      id: auditId,
+      action: 'contribution_rejected',
+      performedBy: currentUser.name,
+      performedById: currentUser.id,
+      performedByRole: currentUser.isAdmin ? 'admin' : currentUser.isFinanceAdmin ? 'finance' : 'subadmin',
+      targetId: contribId,
+      targetType: 'contribution',
+      amount: target.amount,
+      description: `Rejected contribution from ${target.submittedBy} (₱${target.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}) - Reason: ${reason || 'Not verified'}`,
+      timestamp: new Date().toISOString()
+    };
+
+    setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+    setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
+  };
+
+  const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'timestamp'>) => {
+    const isAuth = Boolean(currentUser?.isAdmin || currentUser?.isSubAdmin || currentUser?.isFinanceAdmin);
+    if (!isAuth) {
+      alert('Only Admins, Sub-Admins, or Finance Reviewers have permission to record disbursements & expenses.');
+      return;
+    }
+
+    const newId = `exp-${Date.now()}`;
+    const newExpense: Expense = {
+      ...expenseData,
+      id: newId,
+      timestamp: new Date().toISOString()
+    };
+
+    setExpenses(prev => [newExpense, ...prev]);
+    setDoc(doc(db, 'expenses', newId), cleanFirestorePayload(newExpense)).catch(err =>
+      handleFirestoreError(err, OperationType.WRITE, `expenses/${newId}`)
+    );
+
+    // Audit Log for Expense
+    const auditId = `audit-fin-${Date.now()}`;
+    const newAuditLog: FinancialAuditLog = {
+      id: auditId,
+      action: 'expense_added',
+      performedBy: currentUser.name,
+      performedById: currentUser.id,
+      performedByRole: currentUser.isAdmin ? 'admin' : currentUser.isFinanceAdmin ? 'finance' : 'subadmin',
+      targetId: newId,
+      targetType: 'expense',
+      amount: expenseData.amount,
+      description: `Recorded disbursement for ${expenseData.category}: ₱${expenseData.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} (${expenseData.item})`,
+      timestamp: new Date().toISOString()
+    };
+
+    setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+    setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
+  };
+
+  const handleDeleteExpense = (expenseId: string) => {
+    if (!expenseId) return;
+    const target = expenses.find(e => e.id === expenseId);
+
+    // Instant local state update
+    setExpenses(prev => prev.filter(e => e.id !== expenseId));
+
+    // Delete in Firestore
+    deleteDoc(doc(db, 'expenses', expenseId)).catch(err => {
+      console.warn('Firestore delete expense error:', err);
+    });
+
+    if (target) {
+      const auditId = `audit-fin-${Date.now()}`;
+      const newAuditLog: FinancialAuditLog = {
+        id: auditId,
+        action: 'expense_deleted',
+        performedBy: currentUser?.name || 'Admin',
+        performedById: currentUser?.id || 'admin-1',
+        performedByRole: currentUser?.isAdmin ? 'admin' : currentUser?.isFinanceAdmin ? 'finance' : 'subadmin',
+        targetId: expenseId,
+        targetType: 'expense',
+        amount: target.amount,
+        description: `Deleted disbursement record for "${target.item}" (₱${target.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })})`,
+        timestamp: new Date().toISOString()
+      };
+      setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+      setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
+    }
+  };
+
+  const handleClearAllExpenses = () => {
+    const currentList = [...expenses];
+    setExpenses([]);
+    currentList.forEach(exp => {
+      deleteDoc(doc(db, 'expenses', exp.id)).catch(console.warn);
+    });
+
+    if (currentList.length > 0) {
+      const auditId = `audit-fin-${Date.now()}`;
+      const totalAmount = currentList.reduce((sum, e) => sum + (e.amount || 0), 0);
+      const newAuditLog: FinancialAuditLog = {
+        id: auditId,
+        action: 'expense_deleted',
+        performedBy: currentUser?.name || 'Admin',
+        performedById: currentUser?.id || 'admin-1',
+        performedByRole: currentUser?.isAdmin ? 'admin' : currentUser?.isFinanceAdmin ? 'finance' : 'subadmin',
+        targetId: 'all_expenses',
+        targetType: 'expense',
+        amount: totalAmount,
+        description: `Removed all ${currentList.length} expenses totalling ₱${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} from the record`,
+        timestamp: new Date().toISOString()
+      };
+      setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+      setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
+    }
+  };
+
+  const handleDeleteContribution = (contribId: string) => {
+    if (!contribId) return;
+    const target = contributions.find(c => c.id === contribId);
+
+    // Instant local state update
+    setContributions(prev => prev.filter(c => c.id !== contribId));
+
+    // Delete in Firestore
+    deleteDoc(doc(db, 'contributions', contribId)).catch(err => {
+      console.warn('Firestore delete contribution error:', err);
+    });
+
+    // Audit Log for deleted contribution
+    const auditId = `audit-fin-${Date.now()}`;
+    const newAuditLog: FinancialAuditLog = {
+      id: auditId,
+      action: 'contribution_rejected',
+      performedBy: currentUser?.name || 'Admin',
+      performedById: currentUser?.id || 'admin-1',
+      performedByRole: currentUser?.isAdmin ? 'admin' : currentUser?.isFinanceAdmin ? 'finance' : 'subadmin',
+      targetId: contribId,
+      targetType: 'contribution',
+      amount: target ? target.amount : 0,
+      description: `Deleted contribution record${target ? `: "${target.purpose}" (${target.submittedBy}, ₱${target.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })})` : ''}`,
+      timestamp: new Date().toISOString()
+    };
+    setFinancialAuditLogs(prev => [newAuditLog, ...prev]);
+    setDoc(doc(db, 'financial_audit_logs', auditId), cleanFirestorePayload(newAuditLog)).catch(console.warn);
   };
 
   const handleRestoreDefaults = () => {
@@ -907,6 +1303,10 @@ export default function App() {
     );
   }
 
+  const pendingContributionsCount = useMemo(() => {
+    return contributions.filter(c => c.status === 'pending').length;
+  }, [contributions]);
+
   return (
     <div className="min-h-screen bg-[#0b1326] text-[#d4e4fa] flex flex-col font-sans selection:bg-[#0b57d0]/30 selection:text-white bg-watermark">
       
@@ -918,6 +1318,7 @@ export default function App() {
         announcements={announcements}
         schedules={schedules}
         applicants={applicants}
+        pendingContributionsCount={pendingContributionsCount}
         activeUserIds={activeUserIdsFromOtherSessions}
         onUserChange={handleUserChange}
         activeTab={activeTab}
@@ -936,6 +1337,7 @@ export default function App() {
           currentUser={currentUser}
           siteSettings={siteSettings}
           applicants={applicants}
+          pendingContributionsCount={pendingContributionsCount}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onOpenNewScheduleModal={() => setShowNewScheduleModal(true)}
@@ -1031,6 +1433,24 @@ export default function App() {
               onAddNote={handleAddNote}
               onUpdateNote={handleUpdateNote}
               onDeleteNote={handleDeleteNote}
+            />
+          )}
+
+          {activeTab === 'resibo' && (
+            <ResiboView
+              currentUser={currentUser}
+              servers={servers}
+              contributions={contributions}
+              expenses={expenses}
+              auditLogs={financialAuditLogs}
+              siteSettings={siteSettings}
+              onAddContribution={handleAddContribution}
+              onApproveContribution={handleApproveContribution}
+              onRejectContribution={handleRejectContribution}
+              onDeleteContribution={handleDeleteContribution}
+              onAddExpense={handleAddExpense}
+              onDeleteExpense={handleDeleteExpense}
+              onClearAllExpenses={handleClearAllExpenses}
             />
           )}
 
@@ -1142,6 +1562,34 @@ export default function App() {
 
       {/* Aesthetics Studio */}
       <AestheticsStudio theme={theme} onThemeChange={setTheme} />
+
+      {/* Birthday Greeting Modal */}
+      {birthdayCelebrantToShow && (
+        <BirthdayGreetingModal
+          celebrant={birthdayCelebrantToShow}
+          isOpen={Boolean(birthdayCelebrantToShow)}
+          onClose={() => setBirthdayCelebrantToShow(null)}
+          isAdmin={Boolean(currentUser?.isAdmin || currentUser?.isSubAdmin)}
+          onSendBirthdayEmail={async () => {
+            try {
+              const resp = await fetch('/api/dispatch-birthdays', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ servers: [birthdayCelebrantToShow] })
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (data.success) {
+                alert(`🎂 Birthday blessing email sent to ${birthdayCelebrantToShow.name} (${birthdayCelebrantToShow.email})!`);
+              } else {
+                alert(`Notice: ${data.error || 'Email dispatched or already sent today.'}`);
+              }
+            } catch (e) {
+              console.error('Failed to trigger birthday email:', e);
+              alert('Could not dispatch birthday email at this moment.');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

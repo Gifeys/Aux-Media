@@ -10,6 +10,7 @@ interface SidebarProps {
   currentUser: Server;
   siteSettings?: SiteSettings;
   applicants?: Applicant[];
+  pendingContributionsCount?: number;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenNewScheduleModal: () => void;
@@ -21,6 +22,7 @@ export default function Sidebar({
   currentUser,
   siteSettings,
   applicants = [],
+  pendingContributionsCount = 0,
   activeTab,
   setActiveTab,
   onOpenNewScheduleModal,
@@ -125,6 +127,25 @@ export default function Sidebar({
         >
           <span className="material-symbols-outlined text-xl">sticky_note_2</span>
           <span>Server Notes</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('resibo')}
+          className={`flex items-center justify-between px-4 py-2.5 rounded-full transition-all text-sm font-semibold cursor-pointer ${
+            activeTab === 'resibo'
+              ? 'bg-[#3e495d] text-amber-300 shadow-sm'
+              : 'text-[#909096] hover:text-amber-300 hover:bg-[#1c2b3c]'
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            <span className="material-symbols-outlined text-xl">receipt_long</span>
+            <span>Resibo (Finances)</span>
+          </div>
+          {(currentUser.isAdmin || currentUser.isSubAdmin || currentUser.isFinanceAdmin) && pendingContributionsCount > 0 && (
+            <span className="bg-amber-500 text-church-950 text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+              {pendingContributionsCount}
+            </span>
+          )}
         </button>
 
         {(currentUser.isAdmin || currentUser.isSubAdmin) && (

@@ -14,6 +14,7 @@ interface HeaderProps {
   announcements?: Announcement[];
   schedules?: ScheduleRow[];
   applicants?: Applicant[];
+  pendingContributionsCount?: number;
   activeUserIds?: string[];
   onUserChange: (user: Server) => void;
   activeTab: string;
@@ -31,6 +32,7 @@ export default function Header({
   announcements = [],
   schedules = [],
   applicants = [],
+  pendingContributionsCount = 0,
   activeUserIds = [],
   onUserChange,
   activeTab,
@@ -413,6 +415,20 @@ export default function Header({
           >
             <span className="material-symbols-outlined">sticky_note_2</span>
             <span>Server Notes</span>
+          </button>
+          <button 
+            onClick={() => { setActiveTab('resibo'); setMobileMenuOpen(false); }}
+            className={`flex items-center justify-between w-full px-4 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'resibo' ? 'bg-[#3e495d] text-amber-300' : 'text-[#909096]'}`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined">receipt_long</span>
+              <span>Resibo (Finances)</span>
+            </div>
+            {(currentUser.isAdmin || currentUser.isSubAdmin) && pendingContributionsCount > 0 && (
+              <span className="bg-amber-500 text-church-950 font-black text-xs px-2.5 py-0.5 rounded-full shadow-md animate-pulse">
+                {pendingContributionsCount} Pending
+              </span>
+            )}
           </button>
           {(currentUser.isAdmin || currentUser.isSubAdmin) && (
             <button 

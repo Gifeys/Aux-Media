@@ -56,6 +56,39 @@
         "isLive": { "type": "boolean" }
       },
       "required": ["id", "dayName", "date"]
+    },
+    "Contribution": {
+      "title": "Contribution",
+      "description": "Member financial contribution / money submitted",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "submittedBy": { "type": "string" },
+        "submittedById": { "type": "string" },
+        "date": { "type": "string" },
+        "purpose": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "amount", "submittedBy", "submittedById", "date", "purpose", "status", "createdAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Ministry expenditure / money spent with receipts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "item": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "purchasedBy": { "type": "string" },
+        "purpose": { "type": "string" },
+        "addedBy": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "item", "amount", "category", "date", "purchasedBy", "addedBy", "timestamp"]
     }
   },
   "firestore": {
@@ -74,6 +107,14 @@
     "/schedules/{scheduleId}": {
       "schema": { "$ref": "#/entities/ScheduleRow" },
       "description": "Weekly liturgy duty schedule assignments"
+    },
+    "/contributions/{contribId}": {
+      "schema": { "$ref": "#/entities/Contribution" },
+      "description": "Member fund contributions"
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Ministry receipts and expense disbursements"
     }
   }
 }

@@ -75,6 +75,29 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.warn('Firestore Operation Info: ', JSON.stringify(errInfo));
 }
 
+/**
+ * Recursively removes all `undefined` values from an object before saving to Firestore,
+ * preventing 'Unsupported field value: undefined' errors.
+ */
+export function cleanFirestorePayload<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(cleanFirestorePayload) as unknown as T;
+  }
+  if (typeof obj === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, any>)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanFirestorePayload(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
+
 // Test connection on boot as mandated
 async function testConnection() {
   try {

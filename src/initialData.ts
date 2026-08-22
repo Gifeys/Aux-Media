@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Server, ScheduleRow, Announcement, SocComOfTheMonth, SiteSettings, ServerNote } from './types';
+import { Server, ScheduleRow, Announcement, SocComOfTheMonth, SiteSettings, ServerNote, Contribution, Expense, FundDeposit, FinancialAuditLog } from './types';
 
 export const DEFAULT_SERVERS: Server[] = [
   {
@@ -401,3 +401,12 @@ export const DEFAULT_NOTES: ServerNote[] = [
     createdAt: '2026-07-29T16:00:00Z'
   }
 ];
+
+export const DEFAULT_CONTRIBUTIONS: Contribution[] = [];
+
+export const DEFAULT_DEPOSITS: FundDeposit[] = [];
+
+export const DEFAULT_EXPENSES: Expense[] = [];
+
+export const DEFAULT_FINANCIAL_AUDIT_LOGS: FinancialAuditLog[] = [];
+

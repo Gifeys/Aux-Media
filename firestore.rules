@@ -61,9 +61,27 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Resibo — Financial Management Collections
+    match /contributions/{contribId} {
+      allow read, write: if true;
+    }
+
+    match /expenses/{expenseId} {
+      allow read, write: if true;
+    }
+
+    match /fund_deposits/{depositId} {
+      allow read, write: if true;
+    }
+
+    match /financial_audit_logs/{logId} {
+      allow read, write: if true;
+    }
+
     // Connection test document
     match /test/{documentId} {
       allow read, write: if true;
     }
   }
 }
+

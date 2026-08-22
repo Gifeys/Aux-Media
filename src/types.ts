@@ -16,6 +16,7 @@ export interface Server {
   workImages?: string[]; // 3 portfolio / ministry work images
   isSubAdmin: boolean;
   isAdmin: boolean;
+  isFinanceAdmin?: boolean; // Promotion: Finance Officer / Auditor who can review pending contributions & manage finances
   birthday: string; // "MM-DD" or "July 24"
   email?: string;
   password?: string; // Default or custom login password
@@ -219,4 +220,80 @@ export interface SubAdminAttendanceAlert {
   createdAt: string;
   isRead?: boolean;
 }
+
+// ----------------------------------------------------
+// Resibo — Financial Management Types
+// ----------------------------------------------------
+
+export type ContributionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface Contribution {
+  id: string;
+  amount: number; // in PHP ₱
+  submittedBy: string;
+  submittedById: string;
+  date: string; // "YYYY-MM-DD"
+  purpose: string; // e.g. "Soccom funds", "Camera equipment pledge"
+  note?: string;
+  proofImageUrl?: string;
+  status: ContributionStatus;
+  createdAt: string;
+  reviewedBy?: string; // Approver ID
+  reviewedByName?: string; // Approver Name
+  reviewedAt?: string; // ISO string
+  rejectionReason?: string;
+}
+
+export type ExpenseCategory =
+  | 'Office Supplies'
+  | 'Printing'
+  | 'Transportation'
+  | 'Equipment & Cables'
+  | 'Snacks & Food'
+  | 'Liturgy & Worship'
+  | 'Software & Licenses'
+  | 'Maintenance'
+  | 'Miscellaneous';
+
+export interface Expense {
+  id: string;
+  item: string;
+  amount: number; // in PHP ₱
+  category: ExpenseCategory | string;
+  date: string; // "YYYY-MM-DD"
+  purchasedBy: string;
+  purchasedById?: string;
+  purpose: string;
+  receiptImageUrl?: string;
+  addedBy: string;
+  addedById: string;
+  timestamp: string;
+  month?: string; // e.g. "2026-08"
+}
+
+export interface FundDeposit {
+  id: string;
+  title: string;
+  amount: number; // in PHP ₱
+  date: string; // "YYYY-MM-DD"
+  source: string;
+  note?: string;
+  addedBy: string;
+  addedById: string;
+  timestamp: string;
+}
+
+export interface FinancialAuditLog {
+  id: string;
+  action: 'contribution_submitted' | 'contribution_approved' | 'contribution_rejected' | 'expense_added' | 'expense_edited' | 'expense_deleted';
+  performedBy: string;
+  performedById: string;
+  performedByRole: string;
+  targetId: string;
+  targetType: 'contribution' | 'expense';
+  amount?: number;
+  description: string;
+  timestamp: string;
+}
+
 
